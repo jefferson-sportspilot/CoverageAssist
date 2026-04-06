@@ -1,0 +1,559 @@
+{
+  "name": "CoverageAssist — 3-Stage Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "edf386fa-af6b-4e06-a5b4-e51eb4be8a4d",
+      "name": "Return to Portal",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3504,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst fullArticle = [\n  d.headline,\n  '',\n  d.introduction,\n  '',\n  d.mainBody,\n  '',\n  d.conclusion\n].join('\\n').trim();\n\nfunction countWords(text) {\n  return text.trim().split(/\\s+/).filter(Boolean).length;\n}\n\nreturn [{\n  json: {\n    success: true,\n    sessionId: d.sessionId,\n    publication: d.pubName,\n    mode: d.mode,\n    modeLabel: d.modeLabel,\n    style_preset: d.stylePreset,\n    tone: d.tone,\n    audience: d.audienceLabel,\n    confidence: d.confidence,\n    article: {\n      headline:     d.headline,\n      introduction: d.introduction,\n      main_body:    d.mainBody,\n      conclusion:   d.conclusion,\n      full_article: fullArticle,\n      seo_keywords: d.seoKeywords\n    },\n    meta: {\n      word_count_target:    d.wordCount,\n      word_count_actual:    countWords(fullArticle),\n      word_count_headline:  countWords(d.headline),\n      word_count_intro:     countWords(d.introduction),\n      word_count_body:      countWords(d.mainBody),\n      word_count_conclusion:countWords(d.conclusion),\n      generated_at:         d.timestamp,\n      pipeline: '3-stage'\n    }\n  }\n}];"
+      },
+      "id": "ca985688-45e2-476f-befb-d824e5edc66b",
+      "name": "Assemble Full Article",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upstream = $('Build Stage 3 Prompt').first().json;\nconst conclusion = ($input.first().json.message?.content || $input.first().json.text || '').trim();\nreturn [{ json: { ...upstream, conclusion } }];"
+      },
+      "id": "8d27f773-07a9-465b-946a-0b46b28567cb",
+      "name": "Parse Stage 3 Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3056,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.stage3_system }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.stage3_user }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 400,
+          "temperature": 0.75
+        }
+      },
+      "id": "aeab675e-8b96-4df7-bffc-14d9e5df03aa",
+      "name": "AI — Conclusion Writer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "JChbgj7rKabZNOoG",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst modeClosingGuides = {\n  player_article:    'End with a MEMORABLE closing line — 1-2 sentences (~40-60 words). Should feel like the final line of a magazine feature. Leave the reader with a clear, lasting impression of who this player is and where they are headed.',\n  game_recap:        'A forward-looking close — 1-2 sentences. Sets up the next game or storyline. What does this result mean for what comes next?',\n  event_standouts:   'An event summary paragraph (~60 words): What did the event reveal about this class or competition level? Then a forward-looking final sentence.',\n  team_story:        'A closing statement (~40-60 words) that captures the essence of this team in one memorable image or idea.',\n  recruiting_report: 'Evaluator Recommendation (2-3 sentences, ~50 words): The closing verdict. Calibrated to confidence level. Should read like a scout\\'s final note on a film session — actionable and specific.'\n};\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 3: Conclusion Writer.\n\nYou will write ONLY the conclusion/closing of a sports article. The headline, introduction, and main body have already been written.\n\nHEADLINE: ${d.headline}\n\nINTRODUCTION:\n${d.introduction}\n\nMAIN BODY (already written — your conclusion must flow naturally from this):\n${d.mainBody}\n\nCONCLUSION GUIDE:\n${modeClosingGuides[d.mode] || modeClosingGuides['player_article']}\n\n${d.sharedContext}\n\nCRITICAL REQUIREMENTS:\n- The conclusion must feel like a NATURAL continuation of the body above — no structural seam.\n- It must be MEMORABLE. Read it and ask: does this stay with you?\n- Do NOT introduce new facts or statistics that were not established in the body.\n- Do NOT repeat the lede or headline sentiment verbatim — reframe and elevate.\n- Calibrated to confidence level: ${d.confidence} — ${d.confidence === 'high' ? 'assertive, declarative, forward-leaning.' : d.confidence === 'cautious' ? 'evidence-anchored, conservative.' : 'balanced and evidence-grounded.'}\n\nHALLUCINATION GUARD: Every factual claim must trace to the source data. Do not invent.\n\nOUTPUT: Return ONLY the conclusion paragraph(s). No headline, no intro, no body. Begin directly with the closing paragraph.`;\n\nconst userPrompt = `Write the conclusion for this ${d.modeLabel}. It must close the article memorably and flow naturally from the main body above.`;\n\nreturn [{ json: { ...d, stage3_system: systemPrompt, stage3_user: userPrompt } }];"
+      },
+      "id": "28e44e8b-5e93-4cb8-8196-b2e209e46a02",
+      "name": "Build Stage 3 Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upstream = $('Build Stage 2 Prompt').first().json;\nconst mainBody = ($input.first().json.message?.content || $input.first().json.text || '').trim();\nreturn [{ json: { ...upstream, mainBody } }];"
+      },
+      "id": "405b1072-5778-4f33-98b3-04ac7a72e027",
+      "name": "Parse Stage 2 Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.stage2_system }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.stage2_user }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1200,
+          "temperature": 0.75
+        }
+      },
+      "id": "0a705f1f-a265-4a32-9994-fb795fd7a179",
+      "name": "AI — Main Body Writer",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "JChbgj7rKabZNOoG",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst modeBodyGuides = {\n  player_article: `MAIN BODY STRUCTURE:\n- Paragraph 1 (~60 words): Set the competitive context — the event, the stage, what was at stake.\n- Paragraph 2 (~80 words): Break down the headline performance. Use SPECIFIC numbers and moments from the notes. Show, don't tell.\n- Paragraph 3 (~80 words): Explain WHY this performance matters — what it reveals at a deeper level.\n- Paragraph 4 (~70 words, optional): A counterpoint or complexity — the honest observation that adds credibility.\n- Standout Qualities (2 paragraphs, ~120 words): Reference the standout tags. Each quality gets a specific observation. Avoid vague praise — anchor every claim.\n- Development Areas (1 paragraph, ~70 words): Written constructively. Frame as the refinement that unlocks the next level.\n- Projection (1-2 sentences, ~50 words): Calibrated to confidence level. Specific about level and role.`,\n\n  game_recap: `MAIN BODY STRUCTURE:\n- Paragraph 1 (~80 words): First-half context — who established momentum and how.\n- Paragraph 2 (~90 words): The turning point(s). Specific plays and sequences from the notes.\n- Paragraph 3 (~90 words): Key performer(s) breakdown. Stats anchored in narrative — not just numbers, but what they meant.\n- Paragraph 4 (~80 words): The closing stretch. How it was won or lost. The specific deciding moment.\n- Paragraph 5 (~60 words): Character/effort observations beyond the box score.\n- Contextual Significance (1 paragraph, ~70 words): Season implications, rivalry context, what the result means going forward.`,\n\n  event_standouts: `MAIN BODY STRUCTURE:\n- Top Performer #1 (3-4 sentences, ~130 words): Name, position, team — what they did, how they did it, a specific defining moment, and what it means for their trajectory.\n- Top Performer #2 (same structure, ~130 words).\n- Top Performer #3 (same structure, ~130 words).\n- Notable Mentions (2-3 players, 2-3 sentences each, ~100 words total): Brief but specific — name, one defining quality, one standout moment.`,\n\n  team_story: `MAIN BODY STRUCTURE:\n- Defining Characteristics (3 paragraphs, ~200 words total):\n    Paragraph 1: Their style of play — specific and tactical.\n    Paragraph 2: The chemistry and culture — how they operate as a unit.\n    Paragraph 3: The coaching imprint — how the system shows up in how they play.\n- Key Contributors (2-3 players, ~60 words each): Name, role, and specific contribution to team identity.\n- Narrative Arc (1 paragraph, ~80 words): Is this team ascending, plateauing, or battling adversity?`,\n\n  recruiting_report: `MAIN BODY STRUCTURE:\n- Player Overview (1 paragraph, ~80 words): Position, class/grade, physical profile, team, event. Baseline quickly.\n- Evaluation Snapshot (~60 words): Translate slider scores and standout tags into natural language narrative — not a list.\n- Strength #1 (~70 words): The observation, the specific evidence, what it means at the next level.\n- Strength #2 (~70 words): Same structure.\n- Strength #3 (~70 words): Same structure.\n- Development Areas (1-2 paragraphs, ~90 words): Honest, specific, constructive — what scouts and coaches will probe.\n- Fit Profile (1 paragraph, ~70 words): What system suits this player? What program level is realistic and why?`\n};\n\nconst targetBodyWords = Math.round(d.wordCount * 0.65);\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 2: Main Body Writer.\n\nYou will write ONLY the main body of a sports article. The headline and introduction have already been written — do NOT repeat them.\n\nHEADLINE ALREADY WRITTEN: ${d.headline}\nINTRODUCTION ALREADY WRITTEN:\n${d.introduction}\n\n${modeBodyGuides[d.mode] || modeBodyGuides['player_article']}\n\nTARGET: ~${targetBodyWords} words for the body.\n\n${d.sharedContext}\n\nESPN / PROFESSIONAL STANDARD REQUIREMENTS:\n- Every paragraph must earn its place. No filler, no padding.\n- Use SPECIFIC language — not \"showed great athleticism\" but \"exploded off the first step to turn a 9-foot closeout into a layup opportunity.\"\n- VARY sentence structure: mix short punchy sentences with longer narrative builds.\n- ANCHOR statistics in narrative: not \"scored 24 points\" but explain what those points meant in context.\n- Each section must flow naturally into the next — no structural seams.\n\nHALLUCINATION GUARD: Every factual claim must trace directly to the source data. Do not invent names, scores, opponents, or biographical details.\n\nOUTPUT: Return ONLY the main body paragraphs. No headline, no introduction, no conclusion. Begin directly with the first body paragraph.`;\n\nconst userPrompt = `Write the main body for this ${d.modeLabel}. Target ~${targetBodyWords} words. Follow the body structure guide above precisely.`;\n\nreturn [{ json: { ...d, stage2_system: systemPrompt, stage2_user: userPrompt } }];"
+      },
+      "id": "c73d287c-6af2-432b-8a61-0fb8e53ab347",
+      "name": "Build Stage 2 Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const upstream = $('Build Stage 1 Prompt').first().json;\nconst stage1Raw = $input.first().json.message?.content || $input.first().json.text || '';\n\nconst headlineMatch   = stage1Raw.match(/HEADLINE:\\s*(.+?)(?=\\n|$)/);\nconst introMatch      = stage1Raw.match(/INTRODUCTION:\\s*([\\s\\S]+?)(?=SEO KEYWORDS:|$)/);\nconst seoMatch        = stage1Raw.match(/SEO KEYWORDS:\\s*([\\s\\S]+?)$/);\n\nconst headline    = (headlineMatch?.[1]  || '').trim();\nconst introduction= (introMatch?.[1]     || '').trim();\nconst seoKeywords = (seoMatch?.[1]       || '').trim();\n\nreturn [{ json: { ...upstream, stage1_raw: stage1Raw, headline, introduction, seoKeywords } }];"
+      },
+      "id": "0df58df8-0281-4d73-9007-3046bb3835bf",
+      "name": "Parse Stage 1 Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.stage1_system }}",
+              "role": "system"
+            },
+            {
+              "content": "={{ $json.stage1_user }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 600,
+          "temperature": 0.75
+        }
+      },
+      "id": "0c1d56a6-fdfa-4581-9250-503d5928e1be",
+      "name": "AI — Title, Intro & SEO",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        384
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "JChbgj7rKabZNOoG",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst modeHeadlineGuides = {\n  player_article:    'A specific, vivid headline that captures the player\\'s defining quality. Example style: \"The Floor General Nobody Saw Coming\" or \"Thompson\\'s Vision Is Ahead of His Time.\"',\n  game_recap:        'A headline that captures the game\\'s defining moment or narrative arc.',\n  event_standouts:   'A headline that captures the event\\'s top story or breakout performer.',\n  team_story:        'Team identity in one vivid, memorable phrase.',\n  recruiting_report: 'Projection-forward. \"The Point Guard Built for the Modern Game\" — not generic.'\n};\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 1: Title, Introduction & SEO.\n\nYour job is to produce THREE things for a sports article:\n1. HEADLINE — ${modeHeadlineGuides[d.mode] || 'A compelling, specific headline.'}\n2. INTRODUCTION (lede) — 2-3 sentences (~60-80 words). Open with the most memorable single moment or quality. Drop the reader into a specific scene or situation. Make them want to read the next paragraph. For a recruiting report, set the player baseline quickly and lead with the highest-value observation.\n3. SEO KEYWORDS — A comma-separated list of 8-12 targeted SEO keywords/phrases relevant to this article. Include: player name, position, team, event name, relevant sports terms, and audience-specific terms (e.g. \"basketball recruiting\", \"point guard prospect\").\n\n${d.sharedContext}\n\nHALLUCINATION GUARD: Every factual claim must trace directly to the source data above. Do not invent stats, names, or moments.\n\nOUTPUT FORMAT (use these exact labels, nothing else):\nHEADLINE: [your headline here]\n\nINTRODUCTION:\n[your lede paragraph here]\n\nSEO KEYWORDS:\n[keyword1, keyword2, keyword3, ...]`;\n\nconst userPrompt = `Generate the Headline, Introduction, and SEO Keywords for this ${d.modeLabel} about ${d.playerName || 'the subject'} at ${d.eventName || 'the event'}.`;\n\nreturn [{ json: { ...d, stage1_system: systemPrompt, stage1_user: userPrompt } }];"
+      },
+      "id": "7a0b5154-1711-4173-85ad-0b6479d54127",
+      "name": "Build Stage 1 Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nfunction sliderSummary(sliders) {\n  if (!sliders || !Object.keys(sliders).length) return '';\n  const lines = Object.entries(sliders).map(([k,v]) => {\n    const label = k.replace(/_/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase());\n    return `  ${label.padEnd(22)} ${v}/10`;\n  });\n  return 'EVALUATION SLIDERS:\\n' + lines.join('\\n');\n}\n\nconst contentLines = [];\nif (d.playerName) contentLines.push('Player: ' + d.playerName + (d.position ? ' — ' + d.position : '') + (d.team ? ' | ' + d.team : ''));\nif (d.ageGrade)   contentLines.push('Age/Grade: ' + d.ageGrade);\nif (d.eventName)  contentLines.push('Event: ' + d.eventName);\nif (d.evalNotes)  contentLines.push('\\nEVALUATOR NOTES (sole factual source — do not invent beyond these):\\n' + d.evalNotes);\nif (d.gameNotes)  contentLines.push('\\nGAME NOTES:\\n' + d.gameNotes);\nif (d.teamNotes)  contentLines.push('\\nTEAM NOTES:\\n' + d.teamNotes);\nconst sliderText = sliderSummary(d.sliders);\nif (sliderText)   contentLines.push('\\n' + sliderText);\nif (d.standoutTags.length) contentLines.push('\\nSTANDOUT TAGS: ' + d.standoutTags.join(' · '));\nif (d.serpContext && d.serpContext.length > 10) {\n  contentLines.push('\\nWEB RESEARCH SNIPPETS (SerpAPI — external context only; do NOT treat as verified facts unless consistent with evaluator notes):\\n' + d.serpContext.slice(0, 2500));\n}\nif (d.styleSampleUrl && d.styleSampleUrl.length > 8) {\n  contentLines.push('\\nSTYLE SAMPLE SOURCE URL (reference only): ' + d.styleSampleUrl);\n}\nconst contentBlock = contentLines.join('\\n');\n\nconst presetGuides = {\n  'Neutral Reporter':      'Objective, factual, journalistic. No opinion unless clearly attributed.',\n  'Recruiting Analyst':    'Data-informed, projection-focused, coach-facing. Clinical but readable.',\n  'Scouting Breakdown':    'Technical, structured, category-driven. Specific, observational, layered.',\n  'Event Recap':           'Chronological flow, game-moment highlights, competitive context.',\n  'Player Spotlight':      'Narrative-first, character-driven. Celebratory but grounded.',\n  'High-Energy Feature':   'Bold, punchy, fast-paced. Vivid verbs. Short punchy sentences.',\n  'Feature Story':         'Narrative-driven and polished, blending scene setting with insight.',\n  'Professional Media':    'Polished, broadcast-quality, publication-ready.',\n  'Shortform Social':      'Tight, punchy, shareable. Built for social virality.',\n  'Development-Focused':   'Growth-minded, forward-looking, coachable-trait emphasis.',\n  'Coach/Recruiter Brief': 'Efficient, hierarchical, time-respecting. Front-load key data.'\n};\nconst audGuides = {\n  general_public:    'Write for a broad sports fan audience. Focus on narrative and entertainment.',\n  college_recruiters:'Write for college coaches. Lead with projectable skills and intangibles.',\n  coaches:           'Use technical terminology. Include tactical observations and system fit.',\n  parents_players:   'Encouraging, accessible tone. Celebrate effort and character.',\n  media_press:       'Polished media-standard prose. Headline-friendly, quotable sentences.',\n  social_media:      'Punchy, high-energy shortform designed for sharing.'\n};\nconst confGuides = {\n  high:     'Write with confident, assertive language. Use strong declarative statements.',\n  moderate: 'Balance confidence with appropriate qualification. Let evidence speak.',\n  measured: 'Use measured, evidence-anchored language. Qualify projections clearly.',\n  cautious: 'Write conservatively. Every claim must be directly supported by notes.'\n};\nconst styleInstruction = d.styleSample && d.styleSample.length > 50\n  ? `\\nSTYLE SAMPLE — ADOPT THIS WRITER'S VOICE (do NOT copy sentences, only the voice):\\n---\\n${d.styleSample.slice(0,1200)}\\n---`\n  : '';\n\nconst revisionInstruction = d.regenerateInstructions\n  ? `\\nREVISION REQUEST (MANDATORY):\\n${d.regenerateInstructions}\\n${d.rewriteContent ? `\\nCURRENT ARTICLE DRAFT TO REVISE (REFERENCE):\\n---\\n${d.rewriteContent.slice(0,3500)}\\n---` : ''}\\nFollow this revision request strictly while keeping all claims grounded in source data.`\n  : '';\n\nconst sharedContext = `\nPUBLICATION: ${d.pubName}\nARTICLE TYPE: ${d.modeLabel}\nSTYLE PRESET: ${d.stylePreset} — ${presetGuides[d.stylePreset]}\nTONE: ${d.tone} | AUDIENCE: ${d.audienceLabel} | CONFIDENCE: ${d.confidence}\n${audGuides[d.audience]}\n${confGuides[d.confidence]}${styleInstruction}${revisionInstruction}\n\nSOURCE DATA (all facts must trace to this — do not invent):\n${contentBlock}\n`;\n\nreturn [{ json: { ...d, contentBlock, sharedContext } }];"
+      },
+      "id": "bd31bea6-2f23-4c57-ab27-272a19cf058b",
+      "name": "Build Shared Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst validModes = ['player_article','game_recap','event_standouts','team_story','recruiting_report','recruiting_summary'];\nconst rawMode = (body.mode || 'player_article').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst normalizedMode = rawMode === 'recruiting_summary' ? 'recruiting_report' : rawMode;\nconst mode = validModes.includes(normalizedMode) ? normalizedMode : 'player_article';\nconst modeLabels = {\n  player_article:    'Player Feature Article',\n  game_recap:        'Game Recap',\n  event_standouts:   'Event Standouts',\n  team_story:        'Team Story',\n  recruiting_report: 'Recruiting Report'\n};\n\nconst validPresets = ['Neutral Reporter','Recruiting Analyst','Scouting Breakdown','Event Recap','Player Spotlight','High-Energy Feature','Feature Story','Professional Media','Shortform Social','Development-Focused','Coach/Recruiter Brief'];\nconst rawPreset = (body.style_preset || 'Neutral Reporter').trim();\nconst stylePreset = validPresets.includes(rawPreset) ? rawPreset : 'Neutral Reporter';\n\nconst validTones = ['analytical','narrative','energetic','neutral','technical','inspirational'];\nconst tone = validTones.includes((body.tone||'').toLowerCase()) ? body.tone.toLowerCase() : 'analytical';\n\nconst validAudiences = ['general_public','college_recruiters','coaches','parents_players','media_press','social_media'];\nconst rawAud = (body.audience||'general_public').toLowerCase().replace(/[\\s-]/g,'_');\nconst audience = validAudiences.includes(rawAud) ? rawAud : 'general_public';\nconst audienceLabels = {\n  general_public:   'General Sports Audience',\n  college_recruiters:'College Recruiters',\n  coaches:          'Coaches & Staff',\n  parents_players:  'Parents & Players',\n  media_press:      'Media & Press',\n  social_media:     'Social Media'\n};\n\nconst validConf = ['high','moderate','measured','cautious'];\nconst confidence = validConf.includes((body.confidence||'').toLowerCase()) ? body.confidence.toLowerCase() : 'moderate';\n\nconst validAngles = ['breakout_performance','defensive_impact','clutch_performance','floor_general_leadership','shooting_showcase','two_way_player'];\nconst rawAngle = (body.primary_angle || 'breakout_performance').toLowerCase().replace(/[\\s-]/g,'_');\nconst primaryAngle = validAngles.includes(rawAngle) ? rawAngle : 'breakout_performance';\n\nconst rawWC = parseInt(body.word_count) || 350;\nconst wordCount = Math.min(Math.max(rawWC, 80), 800);\n\nconst playerName   = (body.player_name     || '').trim();\nconst position     = (body.position        || '').trim();\nconst team         = (body.team            || '').trim();\nconst ageGrade     = (body.age_grade       || '').trim();\nconst eventName    = (body.event_name      || '').trim();\nconst evalNotes    = (body.evaluator_notes || '').trim();\nconst gameNotes    = (body.game_notes      || '').trim();\nconst teamNotes    = (body.team_notes      || '').trim();\nconst standoutTags = Array.isArray(body.standout_tags) ? body.standout_tags : [];\nconst sliders      = body.sliders && typeof body.sliders === 'object' ? body.sliders : {};\nconst styleSample  = (body.style_sample    || '').trim();\nconst styleSampleUrl = (body.style_sample_url || '').trim();\nconst serpContext = (body.serp_context || body.research_snippets || '').trim();\nconst pubName      = (body.publication_name|| 'SportsPilot').trim();\nconst regenerateInstructions = (body.regenerate_instructions || body.user_edit_instructions || body.revision_instructions || '').trim();\nconst sectionRewrite = (body.section_rewrite || '').trim().toLowerCase();\nconst rewriteContent = (body.rewrite_content || '').trim();\n\nconst hasContent = evalNotes.length > 10 || gameNotes.length > 10 || teamNotes.length > 10;\nif (!hasContent) throw new Error('evaluator_notes, game_notes, or team_notes is required');\n\nconst sessionId = 'CAI-' + Date.now() + '-' + Math.random().toString(36).substring(2,8).toUpperCase();\n\nreturn [{\n  json: {\n    sessionId, mode, modeLabel: modeLabels[mode],\n    stylePreset, tone, audience, audienceLabel: audienceLabels[audience],\n    confidence, primaryAngle, wordCount,\n    playerName, position, team, ageGrade, eventName,\n    evalNotes, gameNotes, teamNotes,\n    standoutTags, sliders, styleSample, styleSampleUrl, serpContext, pubName,\n    regenerateInstructions, sectionRewrite, rewriteContent,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "d312a316-a72b-49f3-bc0c-8f5f3745ca5b",
+      "name": "Validate & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coverage-assist",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "15cefac9-f3d8-4c82-b3a7-093a107edc35",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        208,
+        384
+      ],
+      "webhookId": "coverage-assist-webhook",
+      "pinData": {
+        "body": {
+          "mode": "player_article",
+          "player_name": "Marcus Thompson",
+          "position": "Point Guard",
+          "team": "Westview Wolves",
+          "age_grade": "Grade 11 / 16 years old",
+          "event_name": "Spring Showcase 2025",
+          "evaluator_notes": "Exceptional court vision, consistently found open teammates in transition. Ball handling under pressure was composed — showed maturity beyond his grade. Scored 24 points on 9/14 shooting. Three critical late-game assists that led to the comeback win. Needs to improve pull-up jump shot consistency and defensive positioning off the ball.",
+          "standout_tags": [
+            "court vision",
+            "clutch performer",
+            "transition playmaker"
+          ],
+          "sliders": {
+            "athleticism": 8,
+            "skill_level": 9,
+            "basketball_iq": 9,
+            "coachability": 8,
+            "competitive_drive": 9,
+            "upside": 9
+          },
+          "style_preset": "Recruiting Analyst",
+          "tone": "analytical",
+          "audience": "college_recruiters",
+          "confidence": "high",
+          "word_count": 350,
+          "style_sample": "",
+          "publication_name": "SportsPilot Scout Report"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        592
+      ],
+      "id": "9607d643-a04d-451e-8832-b8ddabfc766e",
+      "name": "SerpAPI",
+      "credentials": {
+        "serpApi": {
+          "id": "rG9hpWh8hL8iI7j5",
+          "name": "MyFinancialLift"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        592
+      ],
+      "id": "d12f78f5-4dfb-4cbe-be45-1987b3a5fa68",
+      "name": "SerpAPI1",
+      "credentials": {
+        "serpApi": {
+          "id": "rG9hpWh8hL8iI7j5",
+          "name": "MyFinancialLift"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        592
+      ],
+      "id": "284b5339-a48d-4a2d-888b-ffd4bdef2b0c",
+      "name": "SerpAPI2",
+      "credentials": {
+        "serpApi": {
+          "id": "rG9hpWh8hL8iI7j5",
+          "name": "MyFinancialLift"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Assemble Full Article": {
+      "main": [
+        [
+          {
+            "node": "Return to Portal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stage 3 Output": {
+      "main": [
+        [
+          {
+            "node": "Assemble Full Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI — Conclusion Writer": {
+      "main": [
+        [
+          {
+            "node": "Parse Stage 3 Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Stage 3 Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI — Conclusion Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stage 2 Output": {
+      "main": [
+        [
+          {
+            "node": "Build Stage 3 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI — Main Body Writer": {
+      "main": [
+        [
+          {
+            "node": "Parse Stage 2 Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Stage 2 Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI — Main Body Writer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stage 1 Output": {
+      "main": [
+        [
+          {
+            "node": "Build Stage 2 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI — Title, Intro & SEO": {
+      "main": [
+        [
+          {
+            "node": "Parse Stage 1 Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Stage 1 Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI — Title, Intro & SEO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Shared Context": {
+      "main": [
+        [
+          {
+            "node": "Build Stage 1 Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Normalize": {
+      "main": [
+        [
+          {
+            "node": "Build Shared Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI — Title, Intro & SEO",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI — Main Body Writer",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI — Conclusion Writer",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f122de86-7704-4922-910a-f4db88f718d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d65af402cf4618f1686cfbe2122be5f50c690cd4a445a551ee33fc92dd1f710d"
+  },
+  "id": "qnfUiLSTaXtBFCj7",
+  "tags": []
+}

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CoverageAssistAI — Evaluation-to-Article Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:        #F4F6F9;
+  --surface:   #FFFFFF;
+  --surface2:  #F8F9FC;
+  --surface3:  #EEF1F7;
+  --border:    #E2E8F0;
+  --border2:   #CBD5E1;
+  --accent:    #1D4ED8;
+  --accent2:   #EA580C;
+  --accent3:   #0891B2;
+  --text:      #0F172A;
+  --text2:     #475569;
+  --text3:     #94A3B8;
+  --red:       #DC2626;
+  --green:     #16A34A;
+  --panel-l:   270px;
+  --panel-r:   290px;
+  --header-h:  58px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+/* ══ TOP BAR ══ */
+.topbar{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(15,23,42,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;}
+.topbar-brand{display:flex;align-items:center;gap:12px;}
+.brand-icon{width:32px;height:32px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;letter-spacing:0.5px;}
+.brand-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--text);}
+.brand-name span{color:var(--accent);}
+.brand-suite{font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-top:-2px;}
+.topbar-mode-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:6px;padding:3px;}
+.mode-tab{padding:6px 14px;border:none;background:transparent;color:var(--text3);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all 0.18s;font-family:'Inter',sans-serif;white-space:nowrap;}
+.mode-tab:hover{color:var(--text2);background:var(--surface3);}
+.mode-tab.active{background:var(--accent);color:#fff;}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.topbar-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600;color:var(--text2);letter-spacing:0.05em;text-transform:uppercase;}
+.topbar-pill.live{border-color:var(--green);color:var(--green);background:rgba(22,163,74,0.06);}
+
+/* ══ THREE-PANEL LAYOUT ══ */
+.workspace{position:fixed;top:var(--header-h);left:0;right:0;bottom:0;display:grid;--left-width:var(--panel-l);--right-width:var(--panel-r);grid-template-columns:var(--left-width) 1fr var(--right-width);overflow:hidden;transition:grid-template-columns 0.2s ease;}
+.workspace.left-collapsed{--left-width:0px;}
+.workspace.right-collapsed{--right-width:0px;}
+
+/* ── LEFT PANEL ── */
+.panel-left{background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;box-shadow:2px 0 8px rgba(15,23,42,0.04);min-width:0;transition:opacity 0.18s ease;}
+.panel-left::-webkit-scrollbar{width:4px;}
+.panel-left::-webkit-scrollbar-track{background:transparent;}
+.panel-left::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.workspace.left-collapsed .panel-left{opacity:0;overflow:hidden;border-right:none;box-shadow:none;pointer-events:none;}
+.panel-section{padding:16px;border-bottom:1px solid var(--border);}
+.panel-section:last-child{border-bottom:none;flex:1;}
+.panel-label{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.panel-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.field label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:0.04em;}
+.field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'Inter',sans-serif;font-size:12px;padding:7px 10px;outline:none;transition:border-color 0.18s;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,255,58,0.1);}
+.field textarea{resize:vertical;min-height:70px;line-height:1.5;}
+.field select option{background:var(--surface2);}
+.tag-input-wrap{display:flex;gap:5px;}
+.tag-input-wrap input{flex:1;}
+.tag-input-wrap button{background:var(--surface3);border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:0 10px;cursor:pointer;font-size:16px;transition:all 0.18s;}
+.tag-input-wrap button:hover{border-color:var(--accent);color:var(--accent);}
+.tags-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.tag{background:var(--surface3);border:1px solid var(--border2);border-radius:3px;padding:2px 8px;font-size:10px;color:var(--text2);display:flex;align-items:center;gap:5px;}
+.tag button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0;line-height:1;}
+.tag button:hover{color:var(--red);}
+
+/* ── SLIDER GROUP ── */
+.slider-group{display:flex;flex-direction:column;gap:8px;}
+.slider-item{display:flex;flex-direction:column;gap:3px;}
+.slider-header{display:flex;justify-content:space-between;align-items:center;}
+.slider-name{font-size:10px;color:var(--text2);font-weight:500;}
+.slider-value{font-size:11px;font-weight:700;color:var(--accent);font-family:'IBM Plex Mono',monospace;min-width:24px;text-align:right;}
+.slider-track{position:relative;height:4px;background:var(--border2);border-radius:2px;cursor:pointer;}
+.slider-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--accent3),var(--accent));transition:width 0.15s;}
+input[type=range]{appearance:none;width:100%;height:4px;background:transparent;outline:none;cursor:pointer;position:absolute;top:0;left:0;opacity:0;}
+
+/* ── STYLE UPLOAD ── */
+.upload-zone{border:1.5px dashed var(--border2);border-radius:6px;padding:14px;text-align:center;cursor:pointer;transition:all 0.18s;background:var(--surface2);}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(29,78,216,0.04);}
+.upload-zone p{font-size:11px;color:var(--text3);line-height:1.6;}
+.upload-zone strong{color:var(--accent);display:block;font-size:13px;margin-bottom:3px;}
+.upload-zone input[type=file]{display:none;}
+.upload-active{border-color:var(--green);background:rgba(58,255,140,0.04);}
+.upload-active p{color:var(--green);}
+
+/* ── GENERATE BTN ── */
+.generate-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;margin-top:4px;}
+.generate-btn:hover{background:#1e40af;transform:translateY(-1px);box-shadow:0 4px 20px rgba(232,255,58,0.3);}
+.generate-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.generate-btn:active{transform:translateY(0);}
+
+/* ── CENTER PANEL ── */
+.panel-center{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+.article-toolbar{padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;}
+.article-toolbar-left{display:flex;align-items:center;gap:8px;}
+.article-meta-chip{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:10px;color:var(--text2);font-weight:600;letter-spacing:0.04em;white-space:nowrap;}
+.article-meta-chip.accent{border-color:var(--accent);color:var(--accent);}
+.article-meta-chip.mode{border-color:var(--accent2);color:var(--accent2);}
+.article-toolbar-right{display:flex;align-items:center;gap:6px;}
+.toolbar-btn{background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.18s;font-family:'Inter',sans-serif;}
+.toolbar-btn:hover{border-color:var(--text2);color:var(--text);}
+.toolbar-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.toolbar-btn.primary:hover{background:#1e40af;}
+.toolbar-btn.compact{padding:5px 9px;font-size:10px;}
+
+/* ── ARTICLE CANVAS ── */
+.article-canvas-wrap{flex:1;overflow-y:auto;padding:40px 60px;}
+.article-canvas-wrap::-webkit-scrollbar{width:4px;}
+.article-canvas-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.article-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;opacity:0.4;}
+.article-empty-icon{font-size:48px;margin-bottom:16px;filter:grayscale(1);}
+.article-empty h2{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:var(--text2);margin-bottom:8px;}
+.article-empty p{font-size:12px;color:var(--text3);max-width:280px;line-height:1.7;}
+.article-headline{font-family:'Playfair Display',serif;font-size:clamp(26px,3vw,38px);font-weight:900;color:var(--text);line-height:1.15;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border);letter-spacing:-0.01em;}
+.article-headline-edit{font-family:'Playfair Display',serif;font-size:clamp(26px,3vw,38px);font-weight:900;color:var(--text);line-height:1.15;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--border);letter-spacing:-0.01em;width:100%;background:transparent;border-top:none;border-left:none;border-right:none;outline:none;resize:none;overflow:hidden;min-height:72px;}
+.article-headline-edit:focus{outline:none;}
+.article-meta-bar{display:flex;align-items:center;gap:10px;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.article-byline{font-size:11px;color:var(--text3);font-style:italic;}
+.article-meta-pill{font-size:10px;font-weight:700;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:3px;padding:2px 8px;letter-spacing:0.04em;text-transform:uppercase;}
+.article-body{font-size:15px;color:var(--text);line-height:1.85;white-space:pre-wrap;font-family:'Inter',sans-serif;font-weight:300;}
+.article-body-edit{font-size:15px;color:var(--text);line-height:1.85;font-family:'Inter',sans-serif;font-weight:300;width:100%;background:transparent;border:none;outline:none;resize:none;min-height:400px;}
+.article-body-edit:focus{outline:none;}
+.word-count-bar{padding:8px 20px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;flex-shrink:0;}
+
+/* ── RIGHT PANEL ── */
+.panel-right{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;box-shadow:-2px 0 8px rgba(15,23,42,0.04);min-width:0;transition:opacity 0.18s ease;}
+.panel-right::-webkit-scrollbar{width:4px;}
+.panel-right::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+.workspace.right-collapsed .panel-right{opacity:0;overflow:hidden;border-left:none;box-shadow:none;pointer-events:none;}
+.right-section{padding:14px 16px;border-bottom:1px solid var(--border);}
+.right-section:last-child{border-bottom:none;}
+
+/* ── REWRITE CONTROLS ── */
+.rewrite-btn{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;text-align:left;transition:all 0.18s;font-family:'Inter',sans-serif;margin-bottom:5px;display:flex;align-items:center;gap:8px;}
+.rewrite-btn:hover{border-color:var(--accent3);color:var(--text);background:var(--surface3);}
+.rewrite-btn .rb-icon{font-size:14px;flex-shrink:0;}
+
+/* ── STYLE PRESETS ── */
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.preset-btn{padding:7px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text3);font-size:9px;font-weight:700;letter-spacing:0.04em;cursor:pointer;text-align:center;transition:all 0.18s;font-family:'Inter',sans-serif;text-transform:uppercase;line-height:1.3;}
+.preset-btn:hover{border-color:var(--accent2);color:var(--text2);}
+.preset-btn.active{background:rgba(234,88,12,0.1);border-color:var(--accent2);color:var(--accent2);}
+
+/* ── HEADLINE OPTIONS ── */
+.headline-option{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:10px 12px;font-size:12px;color:var(--text2);cursor:pointer;transition:all 0.18s;margin-bottom:5px;line-height:1.4;font-family:'Playfair Display',serif;font-style:italic;}
+.headline-option:hover{border-color:var(--accent);color:var(--text);background:rgba(232,255,58,0.05);}
+
+/* ── CONFIDENCE / CONTROLS ── */
+.control-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.control-label{font-size:10px;color:var(--text3);font-weight:600;letter-spacing:0.04em;}
+.control-chips{display:flex;gap:4px;}
+.ctrl-chip{padding:4px 9px;border:1px solid var(--border);border-radius:3px;font-size:9px;font-weight:700;letter-spacing:0.05em;cursor:pointer;color:var(--text3);background:var(--surface2);transition:all 0.15s;font-family:'Inter',sans-serif;text-transform:uppercase;}
+.ctrl-chip:hover{border-color:var(--text2);color:var(--text2);}
+.ctrl-chip.active{background:var(--accent3);border-color:var(--accent3);color:#fff;}
+
+/* ── PUBLISH / EXPORT ── */
+.export-btn{width:100%;padding:10px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.18s;font-family:'Inter',sans-serif;margin-bottom:6px;display:flex;align-items:center;gap:8px;border:1px solid;}
+.export-btn.copy{background:var(--surface2);border-color:var(--border);color:var(--text2);}
+.export-btn.copy:hover{border-color:var(--text);color:var(--text);}
+.export-btn.download{background:var(--surface2);border-color:var(--border);color:var(--text2);}
+.export-btn.download:hover{border-color:var(--accent3);color:var(--accent3);}
+.export-btn.publish{background:var(--accent);border-color:var(--accent);color:#fff;}
+.export-btn.publish:hover{background:#1e40af;}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,0.7);backdrop-filter:blur(4px);z-index:9999;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.loading-overlay.active{display:flex;}
+.loader-ring{width:52px;height:52px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin-cai 0.7s linear infinite;box-shadow:0 0 0 1px rgba(29,78,216,0.1);}
+@keyframes spin-cai{to{transform:rotate(360deg);}}
+.loader-text{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--text2);}
+.loader-sub{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;}
+
+/* ── CHIPS / TOGGLES ── */
+.chip-row{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{padding:4px 10px;border:1px solid var(--border);border-radius:3px;font-size:10px;font-weight:600;cursor:pointer;color:var(--text3);background:var(--surface2);transition:all 0.15s;font-family:'Inter',sans-serif;letter-spacing:0.03em;}
+.chip:hover{border-color:var(--text2);color:var(--text2);}
+.chip.active{background:rgba(8,145,178,0.08);border-color:var(--accent3);color:var(--accent3);}
+.chip.tone.active{background:rgba(234,88,12,0.08);border-color:var(--accent2);color:var(--accent2);}
+
+/* ── NOTICE / ERROR ── */
+.notice{background:rgba(255,64,64,0.1);border:1px solid rgba(255,64,64,0.3);border-radius:5px;padding:10px 12px;font-size:11px;color:var(--red);margin-top:8px;display:none;line-height:1.5;}
+.notice.visible{display:block;}
+
+/* ── SECTION LABEL in right panel ── */
+.evidence-item{background:var(--surface2);border-left:2px solid var(--accent);padding:8px 10px;font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px;border-radius:0 4px 4px 0;}
+
+/* ── SCROLLABLE chips for presets ── */
+.wc-display{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);font-weight:700;min-width:36px;text-align:right;}
+.wc-slider{width:100%;appearance:none;height:3px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;}
+.wc-slider::-webkit-slider-thumb{appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(29,78,216,0.3);}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:900px){
+  .workspace{grid-template-columns:1fr;}
+  .panel-left,.panel-right{display:none;}
+  .panel-center{grid-column:1;}
+  .topbar-mode-tabs{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loaderText">GENERATING</div>
+  <div class="loader-sub" id="loaderSub">Writing to ESPN-caliber standard…</div>
+</div>
+
+<!-- ══ TOP BAR ══ -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-icon">CA</div>
+    <div>
+      <div class="brand-name">Coverage<span>Assist</span>AI</div>
+      <div class="brand-suite">SportsPilotAI Suite · Evaluation-to-Article Engine</div>
+    </div>
+  </div>
+  <div class="topbar-mode-tabs">
+    <button class="mode-tab active" data-mode="player_article"   onclick="cai.switchMode('player_article',this)">Player Article</button>
+    <button class="mode-tab"        data-mode="game_recap"       onclick="cai.switchMode('game_recap',this)">Game Recap</button>
+    <button class="mode-tab"        data-mode="event_standouts"  onclick="cai.switchMode('event_standouts',this)">Event Standouts</button>
+    <button class="mode-tab"        data-mode="team_story"       onclick="cai.switchMode('team_story',this)">Team Story</button>
+    <button class="mode-tab"        data-mode="recruiting_report" onclick="cai.switchMode('recruiting_report',this)">Recruiting Report</button>
+  </div>
+  <div class="topbar-actions">
+    <span class="topbar-pill live" id="sessionPill">SESSION READY</span>
+    <span class="topbar-pill" id="modePill">PLAYER ARTICLE</span>
+  </div>
+</header>
+
+<!-- ══ THREE-PANEL WORKSPACE ══ -->
+<div class="workspace">
+
+  <!-- ════ LEFT PANEL — Evaluation Data & Controls ════ -->
+  <div class="panel-left" id="panelLeft">
+
+    <!-- Player / Event Info -->
+    <div class="panel-section" id="section-player-info">
+      <div class="panel-label">Player / Event Info</div>
+      <div class="field"><label>Player Name</label><input type="text" id="l-playerName" placeholder="First Last (no ID needed)"/></div>
+      <div class="field" id="field-position"><label>Position</label><input type="text" id="l-position" placeholder="e.g. Point Guard, Striker…"/></div>
+      <div class="field"><label>Team / Club</label><input type="text" id="l-team" placeholder="e.g. Westview Wolves"/></div>
+      <div class="field" id="field-age"><label>Age / Grade</label><input type="text" id="l-age" placeholder="e.g. Grade 11 / 16 years old"/></div>
+      <div class="field"><label>Event / Tournament</label><input type="text" id="l-event" placeholder="e.g. Spring Showcase 2025"/></div>
+      <div class="field"><label>Publication Name</label><input type="text" id="l-pub" placeholder="e.g. SportsPilot Scout Report" value="SportsPilot Scout Report"/></div>
+    </div>
+
+    <!-- Evaluator Notes -->
+    <div class="panel-section">
+      <div class="panel-label" id="notes-label">Evaluator Notes</div>
+      <div class="field">
+        <textarea id="l-evalNotes" rows="5" placeholder="Describe performance, observations, strengths, areas for development. Ground all claims here — the AI will not hallucinate beyond these notes."></textarea>
+      </div>
+      <div class="field" id="field-gameNotes" style="display:none">
+        <label>Game Notes</label>
+        <textarea id="l-gameNotes" rows="3" placeholder="Score, key moments, turning points…"></textarea>
+      </div>
+      <div class="field" id="field-teamNotes" style="display:none">
+        <label>Team Notes</label>
+        <textarea id="l-teamNotes" rows="3" placeholder="Team identity, trends, key contributors…"></textarea>
+      </div>
+    </div>
+
+    <!-- Standout Tags -->
+    <div class="panel-section">
+      <div class="panel-label">Standout Tags</div>
+      <div class="tag-input-wrap">
+        <input type="text" id="l-tagInput" placeholder="Add a standout quality…" onkeydown="if(event.key==='Enter'){event.preventDefault();cai.addTag();}"/>
+        <button onclick="cai.addTag()">+</button>
+      </div>
+      <div class="tags-list" id="tagsList"></div>
+    </div>
+
+    <!-- Evaluation Sliders -->
+    <div class="panel-section" id="section-sliders">
+      <div class="panel-label">Evaluation Sliders</div>
+      <div class="slider-group" id="sliderGroup"></div>
+    </div>
+
+    <!-- Generate button at bottom -->
+    <div class="panel-section">
+      <div class="notice" id="leftNotice"></div>
+      <div style="font-size:9px;color:var(--text3);text-align:center;margin-bottom:8px;letter-spacing:0.04em;line-height:1.6;">Richer notes → richer articles<br/>Aim for 3+ sentences of evaluator notes</div>
+      <button class="generate-btn" id="generateBtn" onclick="cai.generate()">GENERATE ARTICLE</button>
+    </div>
+  </div>
+
+  <!-- ════ CENTER PANEL — Live Article Canvas ════ -->
+  <div class="panel-center">
+    <div class="article-toolbar">
+      <div class="article-toolbar-left">
+        <button class="toolbar-btn compact" onclick="cai.togglePanel('left')" id="toggleLeftBtn" title="Toggle Player/Event panel">◀ Inputs</button>
+        <button class="toolbar-btn compact" onclick="cai.togglePanel('right')" id="toggleRightBtn" title="Toggle Style panel">Style ▶</button>
+        <span class="article-meta-chip mode" id="toolbarMode">Player Article</span>
+        <span class="article-meta-chip accent" id="toolbarStyle">Neutral Reporter</span>
+        <span class="article-meta-chip" id="toolbarAudience">General Audience</span>
+      </div>
+      <div class="article-toolbar-right">
+        <button class="toolbar-btn" onclick="cai.toggleEdit()" id="editToggleBtn" style="display:none">✏️ Edit Mode</button>
+        <button class="toolbar-btn" onclick="cai.copyArticle()" id="copyBtn" style="display:none">📋 Copy</button>
+        <button class="toolbar-btn primary" onclick="cai.downloadArticle()" id="dlBtn" style="display:none">⬇ Export</button>
+      </div>
+    </div>
+
+    <div class="article-canvas-wrap" id="articleCanvas">
+      <div class="article-empty" id="articleEmpty">
+        <div class="article-empty-icon">📰</div>
+        <h2>Article Canvas</h2>
+        <p>Select a mode, fill in your evaluation data and notes, then hit Generate Article. Set word count to 500+ for ESPN-caliber depth.</p>
+      </div>
+    </div>
+
+    <div class="word-count-bar">
+      <span id="wordCountDisplay">— words</span>
+      <span id="generatedAtDisplay" style="color:var(--text3)">—</span>
+      <span id="styleDisplay" style="color:var(--text3)">—</span>
+    </div>
+  </div>
+
+  <!-- ════ RIGHT PANEL — Editorial Controls ════ -->
+  <div class="panel-right">
+
+    <!-- Writing Style Presets -->
+    <div class="right-section">
+      <div class="panel-label">Style Preset</div>
+      <div class="preset-grid" id="presetGrid"></div>
+    </div>
+
+    <!-- Angle Selector -->
+    <div class="right-section">
+      <div class="panel-label">Primary Angle</div>
+      <div class="chip-row" id="angleChips">
+        <button class="chip active" data-angle="breakout_performance" onclick="cai.selectChip('angle','breakout_performance',this)">Breakout</button>
+        <button class="chip" data-angle="defensive_impact" onclick="cai.selectChip('angle','defensive_impact',this)">Defense</button>
+        <button class="chip" data-angle="clutch_performance" onclick="cai.selectChip('angle','clutch_performance',this)">Clutch</button>
+        <button class="chip" data-angle="floor_general_leadership" onclick="cai.selectChip('angle','floor_general_leadership',this)">Floor General</button>
+        <button class="chip" data-angle="shooting_showcase" onclick="cai.selectChip('angle','shooting_showcase',this)">Shooting</button>
+        <button class="chip" data-angle="two_way_player" onclick="cai.selectChip('angle','two_way_player',this)">Two-Way</button>
+      </div>
+    </div>
+
+    <!-- Tone -->
+    <div class="right-section">
+      <div class="panel-label">Tone</div>
+      <div class="chip-row" id="toneChips">
+        <button class="chip tone active" data-tone="analytical"    onclick="cai.selectChip('tone','analytical',this)">Analytical</button>
+        <button class="chip tone"        data-tone="narrative"     onclick="cai.selectChip('tone','narrative',this)">Narrative</button>
+        <button class="chip tone"        data-tone="energetic"     onclick="cai.selectChip('tone','energetic',this)">Energetic</button>
+        <button class="chip tone"        data-tone="neutral"       onclick="cai.selectChip('tone','neutral',this)">Neutral</button>
+        <button class="chip tone"        data-tone="technical"     onclick="cai.selectChip('tone','technical',this)">Technical</button>
+        <button class="chip tone"        data-tone="inspirational" onclick="cai.selectChip('tone','inspirational',this)">Inspire</button>
+      </div>
+    </div>
+
+    <!-- Audience -->
+    <div class="right-section">
+      <div class="panel-label">Audience</div>
+      <div class="chip-row" id="audienceChips">
+        <button class="chip active" data-aud="general_public"    onclick="cai.selectChip('audience','general_public',this)">Public</button>
+        <button class="chip"        data-aud="college_recruiters" onclick="cai.selectChip('audience','college_recruiters',this)">Recruiters</button>
+        <button class="chip"        data-aud="coaches"           onclick="cai.selectChip('audience','coaches',this)">Coaches</button>
+        <button class="chip"        data-aud="parents_players"   onclick="cai.selectChip('audience','parents_players',this)">Parents</button>
+        <button class="chip"        data-aud="media_press"       onclick="cai.selectChip('audience','media_press',this)">Media</button>
+        <button class="chip"        data-aud="social_media"      onclick="cai.selectChip('audience','social_media',this)">Social</button>
+      </div>
+    </div>
+
+    <!-- Confidence -->
+    <div class="right-section">
+      <div class="panel-label">Confidence Level</div>
+      <div class="chip-row">
+        <button class="chip" data-conf="high"     onclick="cai.selectChip('confidence','high',this)">High</button>
+        <button class="chip active" data-conf="moderate"  onclick="cai.selectChip('confidence','moderate',this)">Moderate</button>
+        <button class="chip" data-conf="measured" onclick="cai.selectChip('confidence','measured',this)">Measured</button>
+        <button class="chip" data-conf="cautious" onclick="cai.selectChip('confidence','cautious',this)">Cautious</button>
+      </div>
+    </div>
+
+    <!-- Word Count -->
+    <div class="right-section">
+      <div class="panel-label">Target Word Count</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <input type="range" class="wc-slider" id="wcSlider" min="200" max="1200" step="25" value="500" oninput="document.getElementById('wcDisplay').textContent=this.value+'w'"/>
+        <span class="wc-display" id="wcDisplay">500w</span>
+      </div>
+      <div style="font-size:9px;color:var(--text3);line-height:1.6;letter-spacing:0.03em;border-top:1px solid var(--border);padding-top:7px;margin-top:2px;">
+        <span style="color:var(--accent3);">ESPN REFERENCE</span><br/>
+        Player Spotlight 450–700w · Recruiting 350–550w<br/>
+        Game Recap 500–900w · Event Standouts 500–700w
+      </div>
+    </div>
+
+    <!-- Style Upload -->
+    <div class="right-section">
+      <div class="panel-label">Style Sample Upload</div>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('styleFileInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="cai.handleDrop(event)">
+        <input type="file" id="styleFileInput" accept=".txt,.doc,.docx" onchange="cai.handleFileUpload(event)"/>
+        <strong id="uploadZoneTitle">📄 Upload Writing Sample</strong>
+        <p id="uploadZoneDesc">Drag & drop or click — .txt, .doc, .docx<br/>AI will adopt this writer's voice and style</p>
+      </div>
+      <div style="margin-top:6px;">
+        <div class="field"><label>Or Paste Sample Text</label>
+        <textarea id="stylePasteArea" rows="3" placeholder="Paste a paragraph of the target writing style here…" oninput="cai.updateStyleFromPaste()"></textarea></div>
+      </div>
+    </div>
+
+    <!-- Section Rewrite Controls -->
+    <div class="right-section" id="rewriteSection" style="display:none">
+      <div class="panel-label">Section Rewrite</div>
+      <button class="rewrite-btn" onclick="cai.rewriteSection('headline')"><span class="rb-icon">🎯</span> Rewrite Headline</button>
+      <button class="rewrite-btn" onclick="cai.rewriteSection('intro')"><span class="rb-icon">📝</span> Rewrite Opening</button>
+      <button class="rewrite-btn" onclick="cai.rewriteSection('body')"><span class="rb-icon">📰</span> Rewrite Body</button>
+      <button class="rewrite-btn" onclick="cai.rewriteSection('closing')"><span class="rb-icon">🔚</span> Rewrite Closing</button>
+      <button class="rewrite-btn" onclick="cai.generateHeadlines()"><span class="rb-icon">💡</span> Suggest Headlines</button>
+    </div>
+
+    <!-- Headline Suggestions -->
+    <div class="right-section" id="headlineSuggestions" style="display:none">
+      <div class="panel-label">Headline Options</div>
+      <div id="headlineList"></div>
+    </div>
+
+    <!-- Evidence / Source View -->
+    <div class="right-section" id="evidenceSection" style="display:none">
+      <div class="panel-label">Source Evidence</div>
+      <div id="evidenceList"></div>
+    </div>
+
+    <!-- Export -->
+    <div class="right-section">
+      <div class="panel-label">Export & Publish</div>
+      <button class="export-btn copy" onclick="cai.copyArticle()">📋 Copy to Clipboard</button>
+      <button class="export-btn download" onclick="cai.downloadArticle()">⬇ Download .txt</button>
+      <button class="export-btn download" onclick="cai.downloadHTML()">🌐 Download .html</button>
+    </div>
+
+  </div><!-- /panel-right -->
+</div><!-- /workspace -->
+
+<script>
+(function(){
+'use strict';
+
+const WEBHOOK = 'https://n8n-production-bba0.up.railway.app/webhook/coverage-assist';
+
+// ── State ──
+const state = {
+  mode:        'player_article',
+  stylePreset: 'Neutral Reporter',
+  primaryAngle:'breakout_performance',
+  tone:        'analytical',
+  audience:    'general_public',
+  confidence:  'moderate',
+  wordCount:   500,
+  tags:        [],
+  styleSample: '',
+  sliders: {
+    athleticism:       7,
+    skill_level:       7,
+    basketball_iq:     7,
+    coachability:      7,
+    competitive_drive: 7,
+    upside:            7
+  },
+  lastArticle: null,
+  editMode:    false,
+  leftCollapsed: false,
+  rightCollapsed: false
+};
+
+// ── Slider definitions per mode ──
+const SLIDER_DEFS = {
+  player_article:    ['athleticism','skill_level','basketball_iq','coachability','competitive_drive','upside'],
+  game_recap:        ['performance_level','execution','team_effort','game_impact','momentum_control'],
+  event_standouts:   ['standout_score','consistency','clutch_factor','projection','overall_impression'],
+  team_story:        ['team_cohesion','execution','coaching_quality','talent_level','competitive_level'],
+  recruiting_report:['athleticism','skill_level','basketball_iq','coachability','competitive_drive','upside']
+};
+
+const SLIDER_LABELS = {
+  athleticism:'Athleticism', skill_level:'Skill Level', basketball_iq:'Basketball IQ',
+  coachability:'Coachability', competitive_drive:'Competitive Drive', upside:'Upside / Projection',
+  performance_level:'Performance Level', execution:'Execution', team_effort:'Team Effort',
+  game_impact:'Game Impact', momentum_control:'Momentum Control', standout_score:'Standout Score',
+  consistency:'Consistency', clutch_factor:'Clutch Factor', projection:'Projection',
+  overall_impression:'Overall Impression', team_cohesion:'Team Cohesion',
+  coaching_quality:'Coaching Quality', talent_level:'Talent Level', competitive_level:'Competitive Level'
+};
+
+const STYLE_PRESETS = [
+  'Neutral Reporter','Recruiting Analyst','Scouting Breakdown','Event Recap',
+  'Player Spotlight','High-Energy Feature','Feature Story','Professional Media','Shortform Social',
+  'Development-Focused','Coach/Recruiter Brief'
+];
+
+const MODE_LABELS = {
+  player_article:'Player Article', game_recap:'Game Recap',
+  event_standouts:'Event Standouts', team_story:'Team Story', recruiting_report:'Recruiting Report'
+};
+
+const AUD_LABELS = {
+  general_public:'General Audience', college_recruiters:'Recruiters',
+  coaches:'Coaches', parents_players:'Parents', media_press:'Media', social_media:'Social'
+};
+
+window.cai = {};
+
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function syncPanelLayout() {
+  const workspace = document.querySelector('.workspace');
+  if (!workspace) return;
+
+  workspace.classList.toggle('left-collapsed', state.leftCollapsed);
+  workspace.classList.toggle('right-collapsed', state.rightCollapsed);
+
+  const leftBtn = document.getElementById('toggleLeftBtn');
+  const rightBtn = document.getElementById('toggleRightBtn');
+  if (leftBtn) leftBtn.textContent = state.leftCollapsed ? '▶ Inputs' : '◀ Inputs';
+  if (rightBtn) rightBtn.textContent = state.rightCollapsed ? 'Style ◀' : 'Style ▶';
+}
+
+cai.togglePanel = function(side) {
+  if (side === 'left') state.leftCollapsed = !state.leftCollapsed;
+  if (side === 'right') state.rightCollapsed = !state.rightCollapsed;
+  syncPanelLayout();
+};
+
+// ── Init sliders ──
+function buildSliders(mode) {
+  const defs = SLIDER_DEFS[mode] || SLIDER_DEFS.player_article;
+  const group = document.getElementById('sliderGroup');
+  group.innerHTML = '';
+  // Reset sliders state
+  const newSliders = {};
+  defs.forEach(key => {
+    newSliders[key] = state.sliders[key] || 7;
+    const val = newSliders[key];
+    const pct = (val / 10) * 100;
+    group.innerHTML += `
+      <div class="slider-item">
+        <div class="slider-header">
+          <span class="slider-name">${SLIDER_LABELS[key] || key}</span>
+          <span class="slider-value" id="sv-${key}">${val}</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-fill" id="sf-${key}" style="width:${pct}%"></div>
+          <input type="range" min="1" max="10" value="${val}" step="1"
+            oninput="cai.updateSlider('${key}',this.value)"/>
+        </div>
+      </div>`;
+  });
+  state.sliders = newSliders;
+}
+
+cai.updateSlider = function(key, val) {
+  state.sliders[key] = parseInt(val);
+  const sv = document.getElementById('sv-'+key);
+  const sf = document.getElementById('sf-'+key);
+  if (sv) sv.textContent = val;
+  if (sf) sf.style.width = (parseInt(val)/10*100) + '%';
+};
+
+// ── Build style presets ──
+function buildPresets() {
+  const grid = document.getElementById('presetGrid');
+  grid.innerHTML = STYLE_PRESETS.map(p =>
+    `<button class="preset-btn ${p === state.stylePreset ? 'active' : ''}"
+      onclick="cai.selectPreset('${p}',this)">${p}</button>`
+  ).join('');
+}
+
+cai.selectPreset = function(preset, btn) {
+  state.stylePreset = preset;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('toolbarStyle').textContent = preset;
+};
+
+// ── Chip selectors ──
+cai.selectChip = function(type, value, btn) {
+  if (type === 'tone') {
+    state.tone = value;
+    document.querySelectorAll('#toneChips .chip').forEach(b => b.classList.remove('active'));
+  } else if (type === 'audience') {
+    state.audience = value;
+    document.querySelectorAll('#audienceChips .chip').forEach(b => b.classList.remove('active'));
+    document.getElementById('toolbarAudience').textContent = AUD_LABELS[value] || value;
+  } else if (type === 'confidence') {
+    state.confidence = value;
+    document.querySelectorAll('[data-conf]').forEach(b => b.classList.remove('active'));
+  } else if (type === 'angle') {
+    state.primaryAngle = value;
+    document.querySelectorAll('#angleChips .chip').forEach(b => b.classList.remove('active'));
+  }
+  btn.classList.add('active');
+};
+
+// ── Mode switch ──
+cai.switchMode = function(mode, btn) {
+  state.mode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('modePill').textContent = MODE_LABELS[mode] || mode;
+  document.getElementById('toolbarMode').textContent = MODE_LABELS[mode] || mode;
+
+  // Show/hide mode-specific fields
+  const isPlayer  = mode === 'player_article' || mode === 'recruiting_report';
+  const isGame    = mode === 'game_recap';
+  const isTeam    = mode === 'team_story';
+  const isEvent   = mode === 'event_standouts';
+
+  document.getElementById('field-position').style.display = (isPlayer || isGame) ? '' : 'none';
+  document.getElementById('field-age').style.display = isPlayer ? '' : 'none';
+  document.getElementById('field-gameNotes').style.display = (isGame || isEvent) ? '' : 'none';
+  document.getElementById('field-teamNotes').style.display = (isTeam || isGame) ? '' : 'none';
+
+  const notesLabel = document.getElementById('notes-label');
+  if (isTeam) notesLabel.textContent = 'Team Evaluation Notes';
+  else if (isGame) notesLabel.textContent = 'Game Evaluation Notes';
+  else if (isEvent) notesLabel.textContent = 'Event Overview Notes';
+  else notesLabel.textContent = 'Evaluator Notes';
+
+  buildSliders(mode);
+};
+
+// ── Tags ──
+cai.addTag = function() {
+  const input = document.getElementById('l-tagInput');
+  const val = input.value.trim();
+  if (!val || state.tags.includes(val)) { input.value=''; return; }
+  state.tags.push(val);
+  input.value = '';
+  renderTags();
+};
+
+function renderTags() {
+  const list = document.getElementById('tagsList');
+  list.innerHTML = state.tags.map((t,i) =>
+    `<div class="tag">${t}<button onclick="cai.removeTag(${i})">×</button></div>`
+  ).join('');
+}
+
+cai.removeTag = function(i) {
+  state.tags.splice(i,1);
+  renderTags();
+};
+
+// ── Style file upload ──
+cai.handleFileUpload = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    state.styleSample = ev.target.result;
+    markUploadActive(file.name);
+  };
+  reader.readAsText(file);
+};
+
+cai.handleDrop = function(e) {
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    state.styleSample = ev.target.result;
+    markUploadActive(file.name);
+  };
+  reader.readAsText(file);
+};
+
+cai.updateStyleFromPaste = function() {
+  state.styleSample = document.getElementById('stylePasteArea').value;
+};
+
+function markUploadActive(name) {
+  const zone = document.getElementById('uploadZone');
+  zone.classList.add('upload-active');
+  document.getElementById('uploadZoneTitle').textContent = '✅ Style Loaded';
+  document.getElementById('uploadZoneDesc').textContent = name + ' — AI will mirror this voice';
+}
+
+// ── Gather payload ──
+function buildPayload(override) {
+  const wc = parseInt(document.getElementById('wcSlider').value) || 350;
+  return {
+    mode:             state.mode,
+    player_name:      document.getElementById('l-playerName').value,
+    position:         document.getElementById('l-position').value,
+    team:             document.getElementById('l-team').value,
+    age_grade:        document.getElementById('l-age').value,
+    event_name:       document.getElementById('l-event').value,
+    publication_name: document.getElementById('l-pub').value || 'SportsPilot Scout Report',
+    evaluator_notes:  document.getElementById('l-evalNotes').value,
+    game_notes:       document.getElementById('l-gameNotes').value,
+    team_notes:       document.getElementById('l-teamNotes').value,
+    standout_tags:    state.tags,
+    sliders:          state.sliders,
+    style_preset:     state.stylePreset,
+    primary_angle:    state.primaryAngle,
+    tone:             state.tone,
+    audience:         state.audience,
+    confidence:       state.confidence,
+    word_count:       wc,
+    style_sample:     state.styleSample,
+    ...(override || {})
+  };
+}
+
+// ── Main generate ──
+cai.generate = async function() {
+  const notes = document.getElementById('l-evalNotes').value.trim();
+  const gameNotes = document.getElementById('l-gameNotes').value.trim();
+  const teamNotes = document.getElementById('l-teamNotes').value.trim();
+  if (!notes && !gameNotes && !teamNotes) {
+    const n = document.getElementById('leftNotice');
+    n.textContent = 'Add evaluator notes before generating.';
+    n.classList.add('visible');
+    setTimeout(() => n.classList.remove('visible'), 5000);
+    return;
+  }
+
+  showLoader('GENERATING', 'Building article from evaluation data…');
+  document.getElementById('generateBtn').disabled = true;
+
+  try {
+    const data = await callWebhook(buildPayload());
+    state.lastArticle = data;
+    renderArticle(data);
+    document.getElementById('rewriteSection').style.display = '';
+    document.getElementById('evidenceSection').style.display = '';
+    buildEvidenceView();
+  } catch(err) {
+    const n = document.getElementById('leftNotice');
+    n.textContent = '⚠ Generation failed: ' + err.message;
+    n.classList.add('visible');
+    setTimeout(() => n.classList.remove('visible'), 8000);
+  } finally {
+    hideLoader();
+    document.getElementById('generateBtn').disabled = false;
+  }
+};
+
+// ── Section rewrite ──
+cai.rewriteSection = async function(section) {
+  if (!state.lastArticle) return;
+  const article = state.lastArticle.article || '';
+  const lines = article.split('\n').filter(l => l.trim());
+  let content = '';
+  if (section === 'headline') content = lines[0] || '';
+  else if (section === 'intro') content = lines.slice(1,3).join('\n');
+  else if (section === 'body')  content = lines.slice(3, lines.length-1).join('\n');
+  else if (section === 'closing') content = lines[lines.length-1] || '';
+
+  showLoader('REWRITING', 'Refining the ' + section + '…');
+  try {
+    const data = await callWebhook(buildPayload({
+      section_rewrite: section,
+      rewrite_content: content
+    }));
+    // Splice the rewrite back into the article
+    if (section === 'headline') {
+      const rest = article.split('\n').slice(1).join('\n');
+      const updated = data.article + '\n' + rest;
+      state.lastArticle.article = updated;
+    } else {
+      state.lastArticle.article = state.lastArticle.article.replace(content, data.article);
+    }
+    renderArticle(state.lastArticle);
+  } catch(err) {
+    alert('Rewrite failed: ' + err.message);
+  } finally {
+    hideLoader();
+  }
+};
+
+// ── Generate headline options ──
+cai.generateHeadlines = async function() {
+  if (!state.lastArticle) return;
+  showLoader('HEADLINES', 'Generating headline options…');
+  try {
+    const data = await callWebhook(buildPayload({
+      section_rewrite: 'headlines',
+      rewrite_content: 'Generate 4 alternative headline options for this article. Return ONLY 4 headlines, one per line, no numbering.',
+      word_count: 60
+    }));
+    const headlines = (data.article || '').split('\n').filter(l => l.trim()).slice(0,4);
+    document.getElementById('headlineSuggestions').style.display = '';
+    document.getElementById('headlineList').innerHTML = headlines.map(h =>
+      `<div class="headline-option" onclick="cai.applyHeadline(this.textContent)">${h}</div>`
+    ).join('');
+  } catch(err) {
+    alert('Could not generate headlines: ' + err.message);
+  } finally {
+    hideLoader();
+  }
+};
+
+cai.applyHeadline = function(text) {
+  if (!state.lastArticle) return;
+  const lines = state.lastArticle.article.split('\n');
+  lines[0] = text;
+  state.lastArticle.article = lines.join('\n');
+  state.lastArticle.headline = text;
+  renderArticle(state.lastArticle);
+};
+
+// ── Render article ──
+function renderArticle(data) {
+  const canvas = document.getElementById('articleCanvas');
+  document.getElementById('articleEmpty').style.display = 'none';
+  document.getElementById('editToggleBtn').style.display = '';
+  document.getElementById('copyBtn').style.display = '';
+  document.getElementById('dlBtn').style.display = '';
+
+  const lines = (data.article || '').split('\n').filter(l => l.trim());
+  const headline = data.headline || lines[0] || '';
+  const body = lines.slice(1).join('\n').trim();
+  const safeHeadline = escapeHtml(headline);
+  const safeBody = escapeHtml(body);
+
+  const pub = document.getElementById('l-pub').value || 'SportsPilot Scout Report';
+  const player = document.getElementById('l-playerName').value;
+  const event_ = document.getElementById('l-event').value;
+
+  const metaPills = [
+    `<span class="article-meta-pill">${MODE_LABELS[data.mode] || data.mode}</span>`,
+    `<span class="article-meta-pill">${data.stylePreset || state.stylePreset}</span>`,
+    data.wordCount ? `<span class="article-meta-pill">${data.wordCount} words</span>` : ''
+  ].filter(Boolean).join('');
+
+  canvas.innerHTML = `
+    <div>
+      ${state.editMode
+        ? `<textarea class="article-headline-edit" id="articleHeadlineEdit" rows="2" oninput="cai.syncEdit()">${safeHeadline}</textarea>`
+        : `<div class="article-headline" id="articleHeadlineEl">${safeHeadline}</div>`
+      }
+      <div class="article-meta-bar">
+        <span class="article-byline">${pub}${player ? ' · ' + player : ''}${event_ ? ' · ' + event_ : ''}</span>
+        ${metaPills}
+        ${data.hasStyleSample ? '<span class="article-meta-pill" style="border-color:var(--accent3);color:var(--accent3)">Style-Trained</span>' : ''}
+      </div>
+      ${state.editMode
+        ? `<textarea class="article-body-edit" id="articleBodyEdit" oninput="cai.syncEdit()">${safeBody}</textarea>`
+        : `<div class="article-body" id="articleBodyDisplay">${safeBody}</div>`
+      }
+    </div>`;
+
+  // Word count bar
+  const wc = (data.article || '').split(/\s+/).filter(Boolean).length;
+  document.getElementById('wordCountDisplay').textContent = wc + ' words';
+  document.getElementById('generatedAtDisplay').textContent = data.generatedAt ? new Date(data.generatedAt).toLocaleTimeString() : '';
+  document.getElementById('styleDisplay').textContent = (data.stylePreset || state.stylePreset) + ' · ' + (data.tone || state.tone);
+  document.getElementById('editToggleBtn').textContent = state.editMode ? '👁 Read Mode' : '✏️ Edit Mode';
+}
+
+// ── Edit mode toggle ──
+cai.toggleEdit = function() {
+  if (state.editMode) cai.syncEdit();
+  state.editMode = !state.editMode;
+  if (state.lastArticle) {
+    renderArticle(state.lastArticle);
+    if (state.editMode) {
+      const bodyEl = document.getElementById('articleBodyEdit');
+      if (bodyEl) bodyEl.focus();
+    }
+  }
+};
+
+cai.syncEdit = function() {
+  if (state.lastArticle) {
+    const existingHeadline = (state.lastArticle.article || '').split('\n')[0] || '';
+    const headlineEl = document.getElementById('articleHeadlineEdit');
+    const bodyEl = document.getElementById('articleBodyEdit');
+    const headline = headlineEl ? headlineEl.value.trim() : existingHeadline;
+    const body = bodyEl ? bodyEl.value : (state.lastArticle.article || '').split('\n').slice(1).join('\n');
+    state.lastArticle.headline = headline;
+    state.lastArticle.article = headline ? (headline + '\n' + body) : body;
+
+    const wc = (state.lastArticle.article || '').split(/\s+/).filter(Boolean).length;
+    document.getElementById('wordCountDisplay').textContent = wc + ' words';
+  }
+};
+
+// ── Evidence view ──
+function buildEvidenceView() {
+  const notes = document.getElementById('l-evalNotes').value.trim();
+  if (!notes) return;
+  const sentences = notes.split(/[.!?]+/).filter(s => s.trim().length > 15).slice(0,5);
+  document.getElementById('evidenceList').innerHTML = sentences.map(s =>
+    `<div class="evidence-item">${s.trim()}.</div>`
+  ).join('');
+}
+
+// ── Copy / Download ──
+cai.copyArticle = function() {
+  if (!state.lastArticle) return;
+  navigator.clipboard.writeText(state.lastArticle.article || '').then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✅ Copied';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  });
+};
+
+cai.downloadArticle = function() {
+  if (!state.lastArticle) return;
+  const txt = state.lastArticle.article || '';
+  const headline = state.lastArticle.headline || 'article';
+  const blob = new Blob([txt], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'coverageassist-' + headline.replace(/[^a-z0-9]/gi,'-').toLowerCase().slice(0,40) + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+cai.downloadHTML = function() {
+  if (!state.lastArticle) return;
+  const art = state.lastArticle;
+  const lines = (art.article||'').split('\n').filter(l=>l.trim());
+  const headline = lines[0] || 'Article';
+  const body = lines.slice(1).join('\n\n');
+  const pub = document.getElementById('l-pub').value || 'SportsPilot';
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>${headline}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400&display=swap" rel="stylesheet"/>
+<style>body{font-family:'Inter',sans-serif;max-width:720px;margin:60px auto;padding:0 24px;color:#1a1a1a;line-height:1.8;}
+h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;line-height:1.15;margin-bottom:20px;}
+.meta{font-size:12px;color:#888;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;}
+.body{font-size:17px;font-weight:300;white-space:pre-wrap;}
+</style></head><body>
+<h1>${headline}</h1>
+<div class="meta">${pub} · ${art.modeLabel || ''} · ${art.stylePreset || ''} · ${art.wordCount || 0} words</div>
+<div class="body">${body}</div>
+</body></html>`;
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'coverageassist-' + headline.replace(/[^a-z0-9]/gi,'-').toLowerCase().slice(0,40) + '.html';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+// ── Webhook call ──
+async function callWebhook(payload) {
+  const res = await fetch(WEBHOOK, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Server error ' + res.status);
+  return res.json();
+}
+
+// ── Loader ──
+function showLoader(title, sub) {
+  document.getElementById('loaderText').textContent = title;
+  document.getElementById('loaderSub').textContent = sub;
+  document.getElementById('loadingOverlay').classList.add('active');
+}
+function hideLoader() {
+  document.getElementById('loadingOverlay').classList.remove('active');
+}
+
+// ── Init ──
+function init() {
+  buildSliders('player_article');
+  buildPresets();
+  syncPanelLayout();
+  document.getElementById('wcSlider').addEventListener('input', function() {
+    document.getElementById('wcDisplay').textContent = this.value + 'w';
+    state.wordCount = parseInt(this.value);
+  });
+  state.wordCount = parseInt(document.getElementById('wcSlider').value);
+  // Enter key in tag input
+  document.getElementById('l-tagInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); cai.addTag(); }
+  });
+
+  // ── Pre-fill dummy data ──
+  loadDummyData();
+}
+
+function loadDummyData() {
+  // Player info
+  document.getElementById('l-playerName').value = 'Marcus Thompson';
+  document.getElementById('l-position').value   = 'Point Guard';
+  document.getElementById('l-team').value        = 'Westview Wolves';
+  document.getElementById('l-age').value         = 'Grade 11 / 16 years old';
+  document.getElementById('l-event').value       = 'Spring Showcase 2025 — Pacific Regional';
+  document.getElementById('l-pub').value         = 'SportsPilot Scout Report';
+
+  // Evaluator notes
+  document.getElementById('l-evalNotes').value =
+    'Marcus delivered one of the most complete point guard performances of the showcase. ' +
+    'He finished with 24 points on 9-of-14 shooting, adding 9 assists and just 1 turnover ' +
+    'across 32 minutes. His court vision stood out immediately — he consistently found ' +
+    'cutters a beat before the defense could recover, throwing three separate skip passes ' +
+    'that directly created open corner threes. Ball handling under pressure was mature ' +
+    'beyond his grade; he repeatedly used a pull-back crossover to reset possessions when ' +
+    'the defense trapped him in the pick-and-roll. Three late-game assists in the final ' +
+    'four minutes led the Wolves back from a 7-point deficit. ' +
+    'Areas to develop: pull-up jump shot off the dribble needs more consistency ' +
+    '(2-of-6 on pull-up Js), and defensive positioning off the ball can be passive — ' +
+    'he tends to watch the action rather than actively anticipate rotations.';
+
+  // Standout tags
+  state.tags = ['Court Vision', 'Clutch Performer', 'Transition Playmaker', 'High IQ'];
+  renderTags();
+
+  // Sliders
+  const dummySliders = {
+    athleticism: 8, skill_level: 9, basketball_iq: 9,
+    coachability: 8, competitive_drive: 9, upside: 9
+  };
+  Object.entries(dummySliders).forEach(([key, val]) => {
+    state.sliders[key] = val;
+    const sv = document.getElementById('sv-' + key);
+    const sf = document.getElementById('sf-' + key);
+    const input = document.querySelector('[oninput*="' + key + '"]');
+    if (sv) sv.textContent = val;
+    if (sf) sf.style.width = (val / 10 * 100) + '%';
+    if (input) input.value = val;
+  });
+
+  // Style preset
+  cai.selectPreset('Recruiting Analyst', document.querySelector('[onclick*="Recruiting Analyst"]'));
+
+  // Audience chip
+  const recruiterBtn = document.querySelector('[data-aud="college_recruiters"]');
+  if (recruiterBtn) cai.selectChip('audience', 'college_recruiters', recruiterBtn);
+
+  // Confidence
+  const highBtn = document.querySelector('[data-conf="high"]');
+  if (highBtn) cai.selectChip('confidence', 'high', highBtn);
+
+  // Word count
+  document.getElementById('wcSlider').value = 550;
+  document.getElementById('wcDisplay').textContent = '550w';
+  state.wordCount = 550;
+
+  // Style paste sample
+  document.getElementById('stylePasteArea').value =
+    'Thompson moved through defenses the way water finds cracks in stone — not with brute force, ' +
+    'but with an almost eerie patience, waiting for the seam to open before exploding through it. ' +
+    'At 16, he already understands what most guards spend years learning: the game slows down ' +
+    'when you stop trying to make something happen and start reading what the defense is giving you.';
+  cai.updateStyleFromPaste();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
