@@ -12,8 +12,10 @@ import {
   MODE_LABELS,
   SLIDER_DEFS,
   SLIDER_LABELS,
+  STORY_SPINE_OPTIONS,
   STYLE_PRESETS,
   type ArticleMode,
+  type StorySpineId,
 } from "@/lib/coverageAssistConstants";
 import {
   callN8nWebhook,
@@ -84,6 +86,19 @@ export function CoverageAssistApp() {
   const [evalNotes, setEvalNotes] = useState("");
   const [gameNotes, setGameNotes] = useState("");
   const [teamNotes, setTeamNotes] = useState("");
+  const [storySpine, setStorySpine] = useState<StorySpineId>("stakes");
+  const [momentAnchor1, setMomentAnchor1] = useState("");
+  const [momentAnchor2, setMomentAnchor2] = useState("");
+  const [momentAnchor3, setMomentAnchor3] = useState("");
+  const [statLine, setStatLine] = useState("");
+  const [verifiedFacts, setVerifiedFacts] = useState("");
+  const [quote1, setQuote1] = useState("");
+  const [quote2, setQuote2] = useState("");
+  const [quote3, setQuote3] = useState("");
+  const [espnDepthMode, setEspnDepthMode] = useState(true);
+  const [voicePunch, setVoicePunch] = useState(6);
+  const [voiceAnalytics, setVoiceAnalytics] = useState(6);
+  const [voiceScene, setVoiceScene] = useState(6);
   const [stylePaste, setStylePaste] = useState("");
 
   const [lastArticle, setLastArticle] = useState<LastArticle | null>(null);
@@ -230,6 +245,19 @@ export function CoverageAssistApp() {
         style_sample: styleSample,
         style_sample_url: styleSampleUrl.trim(),
         serp_context: serpContext.trim(),
+        story_spine: storySpine,
+        moment_anchor_1: momentAnchor1.trim(),
+        moment_anchor_2: momentAnchor2.trim(),
+        moment_anchor_3: momentAnchor3.trim(),
+        stat_line: statLine.trim(),
+        verified_facts: verifiedFacts.trim(),
+        quote_1: quote1.trim(),
+        quote_2: quote2.trim(),
+        quote_3: quote3.trim(),
+        espn_depth_mode: espnDepthMode,
+        voice_punch: voicePunch,
+        voice_analytics_density: voiceAnalytics,
+        voice_scene_detail: voiceScene,
         ...override,
       };
     },
@@ -255,6 +283,19 @@ export function CoverageAssistApp() {
       styleSample,
       styleSampleUrl,
       serpContext,
+      storySpine,
+      momentAnchor1,
+      momentAnchor2,
+      momentAnchor3,
+      statLine,
+      verifiedFacts,
+      quote1,
+      quote2,
+      quote3,
+      espnDepthMode,
+      voicePunch,
+      voiceAnalytics,
+      voiceScene,
     ]
   );
 
@@ -654,10 +695,35 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
       competitive_drive: 10,
       upside: 8,
     });
-    setStylePreset("Recruiting Analyst");
-    setAudience("college_recruiters");
+    setStylePreset("Professional Media");
+    setAudience("media_press");
+    setPrimaryAngle("floor_general_leadership");
     setConfidence("high");
-    setWordCount(550);
+    setWordCount(750);
+    setStorySpine("stakes");
+    setEspnDepthMode(true);
+    setMomentAnchor1(
+      "Q4 ~2:10 — LeBron touches the post vs a switch, baseline help commits, kick-out corner three created."
+    );
+    setMomentAnchor2(
+      "Two-minute offense — hit-ahead pass collapses the defense; extra pass to a wide-open weak-side shooter."
+    );
+    setMomentAnchor3(
+      "Late switch communication — vocal coverage call prevents a back-cut layup in transition."
+    );
+    setStatLine(
+      "30 PTS (approx.), 11 AST, 8 REB — illustrative line tied to evaluator notes; verify against official box score before publishing."
+    );
+    setVerifiedFacts(
+      "- Western Conference playoff / play-in race context (late regular season).\n" +
+        "- LeBron remains a primary half-court decision-maker in closing minutes when available."
+    );
+    setQuote1("");
+    setQuote2("");
+    setQuote3("");
+    setVoicePunch(7);
+    setVoiceAnalytics(7);
+    setVoiceScene(6);
     const paste =
       "In year twenty-plus, LeBron still manipulates a defense like a chess player on a fast clock: " +
       "one look-off to move the low man, one shoulder turn to freeze the nail defender, then a pass " +
@@ -861,6 +927,166 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
                 value={teamNotes}
                 onChange={(e) => setTeamNotes(e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="panel-section" id="section-espn-structure">
+            <div className="panel-label">ESPN-caliber structure</div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--text3)",
+                marginBottom: 8,
+                lineHeight: 1.5,
+              }}
+            >
+              Story spine, moment anchors, and stat line give the model concrete scenes and
+              checkable numbers. Serp snippets stay background only unless they match notes.
+            </div>
+            <div className="field" style={{ marginBottom: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={espnDepthMode}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setEspnDepthMode(on);
+                    if (on) {
+                      setWordCount((w) => (w < 650 ? 650 : w));
+                    }
+                  }}
+                />
+                ESPN depth mode (650+ words, section budgets, voice controls)
+              </label>
+            </div>
+            <div className="field">
+              <label>Story spine</label>
+              <div className="chip-row" style={{ flexWrap: "wrap" }}>
+                {STORY_SPINE_OPTIONS.map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`chip ${storySpine === id ? "active" : ""}`}
+                    onClick={() => setStorySpine(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field">
+              <label>Moment anchor 1 (time + situation + outcome)</label>
+              <input
+                type="text"
+                placeholder="e.g. Q4 2:10 — post touch, kick-out corner three"
+                value={momentAnchor1}
+                onChange={(e) => setMomentAnchor1(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Moment anchor 2</label>
+              <input
+                type="text"
+                value={momentAnchor2}
+                onChange={(e) => setMomentAnchor2(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Moment anchor 3</label>
+              <input
+                type="text"
+                value={momentAnchor3}
+                onChange={(e) => setMomentAnchor3(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Stat line / box (paste key numbers)</label>
+              <textarea
+                rows={2}
+                placeholder="PTS/FG, 3PT, AST, REB, TOV, MIN — only what you know is true"
+                value={statLine}
+                onChange={(e) => setStatLine(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Verified facts (optional, bullets)</label>
+              <textarea
+                rows={2}
+                placeholder="Short bullets the article may treat as confirmed context"
+                value={verifiedFacts}
+                onChange={(e) => setVerifiedFacts(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Quotes (optional)</label>
+              <input
+                type="text"
+                placeholder="Quote 1"
+                value={quote1}
+                onChange={(e) => setQuote1(e.target.value)}
+                style={{ marginBottom: 6 }}
+              />
+              <input
+                type="text"
+                placeholder="Quote 2"
+                value={quote2}
+                onChange={(e) => setQuote2(e.target.value)}
+                style={{ marginBottom: 6 }}
+              />
+              <input
+                type="text"
+                placeholder="Quote 3"
+                value={quote3}
+                onChange={(e) => setQuote3(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>Voice mix (1–10)</label>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 6,
+                  fontSize: 11,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 88 }}>Punch</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={voicePunch}
+                    onChange={(e) =>
+                      setVoicePunch(parseInt(e.target.value, 10))
+                    }
+                  />
+                  <span>{voicePunch}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 88 }}>Analytics</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={voiceAnalytics}
+                    onChange={(e) =>
+                      setVoiceAnalytics(parseInt(e.target.value, 10))
+                    }
+                  />
+                  <span>{voiceAnalytics}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 88 }}>Scene</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={10}
+                    value={voiceScene}
+                    onChange={(e) => setVoiceScene(parseInt(e.target.value, 10))}
+                  />
+                  <span>{voiceScene}</span>
+                </div>
+              </div>
             </div>
           </div>
 

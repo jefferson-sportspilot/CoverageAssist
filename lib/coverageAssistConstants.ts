@@ -98,3 +98,15 @@ export const AUD_LABELS: Record<string, string> = {
   media_press: "Media",
   social_media: "Social",
 };
+
+/** Drives narrative arc for longform / ESPN-style structure (n8n + payload: story_spine). */
+export const STORY_SPINE_OPTIONS = [
+  ["stakes", "Stakes"],
+  ["timeline", "Timeline"],
+  ["matchup", "Matchup"],
+  ["identity", "Identity"],
+  ["legacy", "Legacy"],
+  ["injury_subplot", "Injury / availability"],
+] as const;
+
+export type StorySpineId = (typeof STORY_SPINE_OPTIONS)[number][0];
