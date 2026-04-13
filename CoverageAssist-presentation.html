@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>CoverageAssistAI — Marketing Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #050508;
+      --bg2: #0f1118;
+      --text: #f4f6fb;
+      --muted: #8b93a7;
+      --lime: #c8ff3d;
+      --lime-dim: rgba(200, 255, 61, 0.15);
+      --card: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .ppt-root {
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ppt-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--lime), #6ee7b7);
+      z-index: 100;
+      transition: width 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
+      width: 0%;
+    }
+
+    .ppt-viewport {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .ppt-track {
+      display: flex;
+      height: 100%;
+      width: max-content;
+      transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+      will-change: transform;
+    }
+
+    .slide {
+      flex: 0 0 100vw;
+      height: 100vh;
+      padding: clamp(2.5rem, 7vw, 5rem);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-inner {
+      max-width: 1040px;
+      width: 100%;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    .slide--hero {
+      background:
+        radial-gradient(ellipse 80% 60% at 70% 20%, rgba(200, 255, 61, 0.12), transparent 55%),
+        radial-gradient(ellipse 50% 40% at 10% 80%, rgba(56, 189, 248, 0.08), transparent 50%),
+        linear-gradient(165deg, var(--bg) 0%, #0a0c12 100%);
+    }
+
+    .slide--dark {
+      background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+    }
+
+    .slide--cta {
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 100%, var(--lime-dim), transparent 60%),
+        var(--bg);
+    }
+
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--lime);
+      margin-bottom: 1.25rem;
+    }
+
+    h1.ppt-title {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(2.75rem, 7.5vw, 4.25rem);
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      max-width: 14ch;
+    }
+
+    h1.ppt-title .accent {
+      color: var(--lime);
+      font-style: italic;
+    }
+
+    .ppt-sub {
+      margin-top: 1.5rem;
+      font-size: clamp(1.05rem, 2.2vw, 1.35rem);
+      color: var(--muted);
+      max-width: 38ch;
+      line-height: 1.55;
+      font-weight: 500;
+    }
+
+    h2.slide-head {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 400;
+      line-height: 1.12;
+      margin-bottom: 0.5rem;
+      max-width: 18ch;
+    }
+
+    .slide-deck {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      max-width: 52ch;
+      line-height: 1.65;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+    }
+    @media (max-width: 768px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+
+    .card-mkt {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem 1.35rem;
+      height: 100%;
+    }
+
+    .card-mkt .icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--lime-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-mkt h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .card-mkt p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .steps {
+      display: flex;
+      gap: 1.5rem;
+      align-items: stretch;
+      flex-wrap: wrap;
+    }
+
+    .step {
+      flex: 1 1 200px;
+      padding-top: 0.5rem;
+      border-top: 2px solid var(--lime);
+    }
+
+    .step-num {
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      color: var(--lime);
+      margin-bottom: 0.65rem;
+    }
+
+    .step h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .step p {
+      font-size: 0.92rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    ul.bullets {
+      list-style: none;
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    ul.bullets li {
+      padding-left: 1.5rem;
+      position: relative;
+      font-size: 1.02rem;
+      line-height: 1.5;
+      color: #d4d9e8;
+    }
+
+    ul.bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: 0 0 12px var(--lime);
+    }
+
+    .quote-box {
+      border-left: 4px solid var(--lime);
+      padding: 1.25rem 0 1.25rem 1.5rem;
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+      font-style: italic;
+      line-height: 1.45;
+      color: #e2e8f4;
+      max-width: 38ch;
+    }
+
+    .quote-by {
+      margin-top: 1rem;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 0.85rem;
+      font-style: normal;
+      color: var(--muted);
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.95rem 1.75rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--lime);
+      color: #0a0a0a;
+      box-shadow: 0 8px 32px rgba(200, 255, 61, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .ppt-chrome {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      padding: 1rem 1.5rem calc(1rem + env(safe-area-inset-bottom));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: linear-gradient(transparent, rgba(5, 5, 8, 0.92));
+      pointer-events: none;
+    }
+
+    .ppt-chrome > * {
+      pointer-events: auto;
+    }
+
+    .ppt-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .ppt-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .ppt-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(200, 255, 61, 0.4);
+    }
+
+    .ppt-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .ppt-counter {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      min-width: 5rem;
+      text-align: center;
+    }
+
+    .ppt-logo {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .kbd-hint {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 50;
+      font-size: 0.65rem;
+      color: var(--muted);
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="ppt-progress" id="progress" aria-hidden="true"></div>
+  <div class="kbd-hint">← → Space · Home · End</div>
+
+  <div class="ppt-root">
+    <div class="ppt-viewport">
+      <div class="ppt-track" id="track">
+        <!-- 1 -->
+        <section class="slide slide--hero" data-title="Intro">
+          <div class="slide-inner">
+            <p class="eyebrow">SportsPilotAI Suite</p>
+            <h1 class="ppt-title">Turn raw evaluations into <span class="accent">coverage that wins attention.</span></h1>
+            <p class="ppt-sub">CoverageAssistAI transforms scout notes into polished articles—on brand, on deadline, at scale.</p>
+          </div>
+        </section>
+
+        <!-- 2 -->
+        <section class="slide slide--dark" data-title="Problem">
+          <div class="slide-inner">
+            <p class="eyebrow">The challenge</p>
+            <h2 class="slide-head">Great scouting deserves better than a blank page.</h2>
+            <p class="slide-deck">Programs and publishers sit on gold-standard evaluations—yet turning them into consistent, publish-ready copy still burns hours. Voice drifts. Deadlines slip. The story never quite matches the rigor of the data.</p>
+            <ul class="bullets">
+              <li>Manual rewrites don’t scale across events and teams.</li>
+              <li>Generic AI ignores your tone—and invents facts you never approved.</li>
+              <li>Your workflow tools don’t talk to each other.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 3 -->
+        <section class="slide slide--dark" data-title="Solution">
+          <div class="slide-inner">
+            <p class="eyebrow">The solution</p>
+            <h2 class="slide-head">One engine. Your voice. Your facts.</h2>
+            <p class="slide-deck">CoverageAssistAI pairs structured evaluation data with automation you control—so every piece reads like your program, stays grounded in your notes, and ships through the pipeline you already trust.</p>
+            <div class="grid-3">
+              <div class="card-mkt">
+                <div class="icon">✦</div>
+                <h3>Brand-true prose</h3>
+                <p>Upload samples, paste voice, or pull text from a URL—then let the model mirror your style, not copy it.</p>
+              </div>
+              <div class="card-mkt">
+                <div class="icon">◎</div>
+                <h3>Fact discipline</h3>
+                <p>Evaluator notes, verified stats, and optional research snippets—clearly separated so claims stay defensible.</p>
+              </div>
+              <div class="card-mkt">
+                <div class="icon">⚡</div>
+                <h3>Automation-ready</h3>
+                <p>Built for n8n: one webhook, rich JSON payload, multi-stage pipelines when you need ESPN-level depth.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4 -->
+        <section class="slide slide--dark" data-title="Audience">
+          <div class="slide-inner">
+            <p class="eyebrow">Who it’s for</p>
+            <h2 class="slide-head">Built for people who live in the gym—and the deadline.</h2>
+            <div class="grid-3">
+              <div class="card-mkt">
+                <div class="icon">🏀</div>
+                <h3>Scouts &amp; directors</h3>
+                <p>Ship player features, event standouts, and recruiting reports without starting from scratch every time.</p>
+              </div>
+              <div class="card-mkt">
+                <div class="icon">📰</div>
+                <h3>Publishers &amp; media</h3>
+                <p>Match house style, hit length targets, and iterate fast with section rewrites and headline options.</p>
+              </div>
+              <div class="card-mkt">
+                <div class="icon">🏟️</div>
+                <h3>Programs &amp; leagues</h3>
+                <p>Keep messaging consistent across teams while your automation stack does the heavy lifting.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5 -->
+        <section class="slide slide--dark" data-title="How it works">
+          <div class="slide-inner">
+            <p class="eyebrow">How it works</p>
+            <h2 class="slide-head">From notes to narrative in three moves.</h2>
+            <div class="steps">
+              <div class="step">
+                <div class="step-num">01</div>
+                <h3>Capture the eval</h3>
+                <p>Enter player or event context, notes, tags, and sliders—the facts the story must respect.</p>
+              </div>
+              <div class="step">
+                <div class="step-num">02</div>
+                <h3>Shape the story</h3>
+                <p>Choose mode, tone, audience, word count; add style samples and optional web context.</p>
+              </div>
+              <div class="step">
+                <div class="step-num">03</div>
+                <h3>Generate &amp; refine</h3>
+                <p>One click to run your n8n workflow—then rewrite sections, refresh headlines, or regenerate with edits.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6 -->
+        <section class="slide slide--dark" data-title="Depth">
+          <div class="slide-inner">
+            <p class="eyebrow">Premium depth</p>
+            <h2 class="slide-head">When you need coverage that reads like national media.</h2>
+            <p class="slide-deck">Enable ESPN-caliber structure: story spine, moment anchors, stat lines, verified facts, and voice controls—so longform pieces have a clear arc, concrete scenes, and room to breathe.</p>
+            <ul class="bullets">
+              <li>Guide the model with stakes, timeline, matchup, identity—not just a word count.</li>
+              <li>Anchor paragraphs to real moments and numbers your team stands behind.</li>
+              <li>Iterate without losing the thread—revision instructions flow through the same pipeline.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 7 -->
+        <section class="slide slide--dark" data-title="Trust">
+          <div class="slide-inner">
+            <p class="eyebrow">Trust &amp; control</p>
+            <h2 class="slide-head">Automation without the black box.</h2>
+            <ul class="bullets">
+              <li>Server-side research APIs—keys never exposed in the browser.</li>
+              <li>Structured payloads your n8n workflow can validate and version.</li>
+              <li>Export to clipboard, .txt, or styled HTML—ready for your CMS or sponsor deck.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- 8 -->
+        <section class="slide slide--dark" data-title="Social proof">
+          <div class="slide-inner">
+            <p class="eyebrow">Proof point</p>
+            <blockquote class="quote-box">“We stopped treating post-event articles as a side project. Same notes—half the time—and the voice finally sounds like us.”</blockquote>
+            <p class="quote-by">— Placeholder for customer quote / program name</p>
+          </div>
+        </section>
+
+        <!-- 9 CTA -->
+        <section class="slide slide--cta" data-title="CTA">
+          <div class="slide-inner">
+            <p class="eyebrow">Next step</p>
+            <h2 class="slide-head">Ready to put your evaluations on the marquee?</h2>
+            <p class="slide-deck">Connect CoverageAssistAI to your webhook, tune your n8n workflow once, then let every evaluation become coverage your audience actually reads.</p>
+            <div class="cta-row">
+              <button type="button" class="btn btn-primary" id="btnReplay">Replay deck</button>
+              <a href="#" class="btn btn-ghost" onclick="return false;">Book a walkthrough</a>
+            </div>
+            <p class="ppt-sub" style="margin-top: 2rem; font-size: 0.9rem;">Replace the secondary CTA with your calendar link or demo request form.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="ppt-chrome">
+    <span class="ppt-logo">CoverageAssistAI</span>
+    <div class="ppt-nav">
+      <button type="button" class="ppt-btn" id="prev" aria-label="Previous slide">←</button>
+      <span class="ppt-counter" id="counter">1 / 9</span>
+      <button type="button" class="ppt-btn" id="next" aria-label="Next slide">→</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var track = document.getElementById("track");
+      var slides = track.querySelectorAll(".slide");
+      var total = slides.length;
+      var i = 0;
+      var progress = document.getElementById("progress");
+      var counter = document.getElementById("counter");
+      var prev = document.getElementById("prev");
+      var next = document.getElementById("next");
+
+      function go(n) {
+        i = Math.max(0, Math.min(total - 1, n));
+        track.style.transform = "translateX(-" + i * 100 + "vw)";
+        var pct = ((i + 1) / total) * 100;
+        progress.style.width = pct + "%";
+        counter.textContent = i + 1 + " / " + total;
+        prev.disabled = i === 0;
+        next.disabled = i === total - 1;
+        document.title = "CoverageAssistAI — " + (slides[i].dataset.title || "Slide " + (i + 1));
+      }
+
+      prev.addEventListener("click", function () {
+        go(i - 1);
+      });
+      next.addEventListener("click", function () {
+        go(i + 1);
+      });
+
+      document.getElementById("btnReplay").addEventListener("click", function () {
+        go(0);
+      });
+
+      window.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+          e.preventDefault();
+          go(i + 1);
+        }
+        if (e.key === "ArrowLeft" || e.key === "PageUp") {
+          e.preventDefault();
+          go(i - 1);
+        }
+        if (e.key === "Home") {
+          e.preventDefault();
+          go(0);
+        }
+        if (e.key === "End") {
+          e.preventDefault();
+          go(total - 1);
+        }
+      });
+
+      var sx = 0;
+      var sy = 0;
+      track.addEventListener(
+        "touchstart",
+        function (e) {
+          sx = e.changedTouches[0].screenX;
+          sy = e.changedTouches[0].screenY;
+        },
+        { passive: true }
+      );
+      track.addEventListener(
+        "touchend",
+        function (e) {
+          var dx = e.changedTouches[0].screenX - sx;
+          var dy = e.changedTouches[0].screenY - sy;
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+            if (dx < 0) go(i + 1);
+            else go(i - 1);
+          }
+        },
+        { passive: true }
+      );
+
+      go(0);
+    })();
+  </script>
+</body>
+</html>

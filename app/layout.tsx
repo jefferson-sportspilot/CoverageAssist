@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "CoverageAssistAI — Evaluation-to-Article Engine",
   description:
     "SportsPilotAI Suite — turn evaluator notes into articles via n8n webhook.",
+  icons: {
+    icon: "/logo-plain.png",
+    apple: "/logo-plain.png",
+  },
 };
 
 export default function RootLayout({

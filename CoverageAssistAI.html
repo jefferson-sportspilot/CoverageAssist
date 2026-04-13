@@ -443,12 +443,13 @@ input[type=range]{appearance:none;width:100%;height:4px;background:transparent;o
       <div class="panel-label">Export & Publish</div>
       <button class="export-btn copy" onclick="cai.copyArticle()">📋 Copy to Clipboard</button>
       <button class="export-btn download" onclick="cai.downloadArticle()">⬇ Download .txt</button>
-      <button class="export-btn download" onclick="cai.downloadHTML()">🌐 Download .html</button>
+      <button class="export-btn download" onclick="cai.downloadPDF()">Download .pdf</button>
     </div>
 
   </div><!-- /panel-right -->
 </div><!-- /workspace -->
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script>
 (function(){
 'use strict';
@@ -936,31 +937,69 @@ cai.downloadArticle = function() {
   URL.revokeObjectURL(url);
 };
 
-cai.downloadHTML = function() {
-  if (!state.lastArticle) return;
-  const art = state.lastArticle;
-  const lines = (art.article||'').split('\n').filter(l=>l.trim());
-  const headline = lines[0] || 'Article';
-  const body = lines.slice(1).join('\n\n');
-  const pub = document.getElementById('l-pub').value || 'SportsPilot';
-  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>${headline}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400&display=swap" rel="stylesheet"/>
-<style>body{font-family:'Inter',sans-serif;max-width:720px;margin:60px auto;padding:0 24px;color:#1a1a1a;line-height:1.8;}
-h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;line-height:1.15;margin-bottom:20px;}
-.meta{font-size:12px;color:#888;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;}
-.body{font-size:17px;font-weight:300;white-space:pre-wrap;}
-</style></head><body>
-<h1>${headline}</h1>
-<div class="meta">${pub} · ${art.modeLabel || ''} · ${art.stylePreset || ''} · ${art.wordCount || 0} words</div>
-<div class="body">${body}</div>
-</body></html>`;
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'coverageassist-' + headline.replace(/[^a-z0-9]/gi,'-').toLowerCase().slice(0,40) + '.html';
-  a.click();
-  URL.revokeObjectURL(url);
+cai.downloadPDF = function() {
+  if (!state.lastArticle || !window.jspdf) {
+    alert('PDF export requires jsPDF. Check your connection and refresh.');
+    return;
+  }
+  const raw = (state.lastArticle.article || '').trim();
+  if (!raw) return;
+  try {
+    var jsPDF = window.jspdf.jsPDF;
+    var lines = raw.split('\n').filter(function(l) { return l.trim(); });
+    var headline = state.lastArticle.headline || lines[0] || 'Article';
+    var body = lines.slice(1).join('\n\n').trim();
+    if (!body) body = raw;
+    var pub = document.getElementById('l-pub').value || 'SportsPilot Scout Report';
+    var metaBits = [
+      state.lastArticle.modeLabel || '',
+      state.lastArticle.stylePreset || '',
+      state.lastArticle.wordCount != null ? state.lastArticle.wordCount + ' words' : ''
+    ].filter(Boolean);
+    var metaBlock = [pub, metaBits.join(' · ')].filter(Boolean).join('\n');
+    var doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    var margin = 48;
+    var pageH = doc.internal.pageSize.getHeight();
+    var pageW = doc.internal.pageSize.getWidth();
+    var maxW = pageW - margin * 2;
+    var y = margin;
+    function ensureSpace(needed) {
+      if (y + needed > pageH - margin) {
+        doc.addPage();
+        y = margin;
+      }
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    var titleLines = doc.splitTextToSize(headline, maxW);
+    ensureSpace(titleLines.length * 22);
+    doc.text(titleLines, margin, y);
+    y += titleLines.length * 22 + 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    if (metaBlock) {
+      var metaLines = doc.splitTextToSize(metaBlock, maxW);
+      ensureSpace(metaLines.length * 12);
+      doc.text(metaLines, margin, y);
+      y += metaLines.length * 12 + 18;
+    }
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+    var paragraphs = body.split(/\n\s*\n/).filter(function(p) { return p.trim(); });
+    var lineH = 14;
+    for (var i = 0; i < paragraphs.length; i++) {
+      var normalized = paragraphs[i].replace(/\n/g, ' ').trim();
+      var wrapped = doc.splitTextToSize(normalized, maxW);
+      ensureSpace(wrapped.length * lineH + 10);
+      doc.text(wrapped, margin, y);
+      y += wrapped.length * lineH + 10;
+    }
+    var safe = headline.replace(/[^a-z0-9]/gi, '-').toLowerCase().slice(0, 40);
+    doc.save('coverageassist-' + safe + '.pdf');
+  } catch (e) {
+    alert('Could not create PDF: ' + (e.message || String(e)));
+  }
 };
 
 // ── Webhook call ──

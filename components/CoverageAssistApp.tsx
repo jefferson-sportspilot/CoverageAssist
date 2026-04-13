@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   useCallback,
   useEffect,
@@ -12,11 +13,19 @@ import {
   MODE_LABELS,
   SLIDER_DEFS,
   SLIDER_LABELS,
+  QUICK_FORMAT_OPTIONS,
   STORY_SPINE_OPTIONS,
   STYLE_PRESETS,
+  formatModeTemplateContract,
   type ArticleMode,
+  type QuickFormatId,
   type StorySpineId,
 } from "@/lib/coverageAssistConstants";
+import {
+  ARTICLE_HISTORY_TEMPLATES,
+  type ArticleHistoryEntry,
+} from "@/lib/articleHistoryTemplates";
+import { downloadArticleAsPdf } from "@/lib/downloadArticlePdf";
 import {
   callN8nWebhook,
   structuredArticleToString,
@@ -92,6 +101,7 @@ export function CoverageAssistApp() {
   const [momentAnchor3, setMomentAnchor3] = useState("");
   const [statLine, setStatLine] = useState("");
   const [verifiedFacts, setVerifiedFacts] = useState("");
+  const [structuredExtras, setStructuredExtras] = useState("");
   const [quote1, setQuote1] = useState("");
   const [quote2, setQuote2] = useState("");
   const [quote3, setQuote3] = useState("");
@@ -99,6 +109,7 @@ export function CoverageAssistApp() {
   const [voicePunch, setVoicePunch] = useState(6);
   const [voiceAnalytics, setVoiceAnalytics] = useState(6);
   const [voiceScene, setVoiceScene] = useState(6);
+  const [quickFormat, setQuickFormat] = useState<QuickFormatId>("full");
   const [stylePaste, setStylePaste] = useState("");
 
   const [lastArticle, setLastArticle] = useState<LastArticle | null>(null);
@@ -124,6 +135,9 @@ export function CoverageAssistApp() {
   const [copyBtnLabel, setCopyBtnLabel] = useState("📋 Copy");
   const [generating, setGenerating] = useState(false);
   const [regenerateInstructions, setRegenerateInstructions] = useState("");
+  const [activeHistoryTemplateId, setActiveHistoryTemplateId] = useState<
+    string | null
+  >(null);
 
   const styleFileRef = useRef<HTMLInputElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
@@ -251,6 +265,8 @@ export function CoverageAssistApp() {
         moment_anchor_3: momentAnchor3.trim(),
         stat_line: statLine.trim(),
         verified_facts: verifiedFacts.trim(),
+        structured_extras: structuredExtras.trim(),
+        template_contract: formatModeTemplateContract(mode),
         quote_1: quote1.trim(),
         quote_2: quote2.trim(),
         quote_3: quote3.trim(),
@@ -258,6 +274,7 @@ export function CoverageAssistApp() {
         voice_punch: voicePunch,
         voice_analytics_density: voiceAnalytics,
         voice_scene_detail: voiceScene,
+        quick_format: quickFormat,
         ...override,
       };
     },
@@ -289,6 +306,7 @@ export function CoverageAssistApp() {
       momentAnchor3,
       statLine,
       verifiedFacts,
+      structuredExtras,
       quote1,
       quote2,
       quote3,
@@ -296,8 +314,23 @@ export function CoverageAssistApp() {
       voicePunch,
       voiceAnalytics,
       voiceScene,
+      quickFormat,
     ]
   );
+
+  const applyQuickFormat = (id: QuickFormatId) => {
+    setQuickFormat(id);
+    if (id === "recap_short") {
+      setWordCount((w) => (w > 350 ? 300 : Math.max(200, w)));
+      setEspnDepthMode(false);
+    } else if (id === "preview_bullets") {
+      setWordCount((w) => (w > 400 ? 350 : Math.max(200, w)));
+      setEspnDepthMode(false);
+    } else if (id === "social_pack") {
+      setWordCount((w) => (w < 250 ? 280 : Math.min(400, w)));
+      setEspnDepthMode(false);
+    }
+  };
 
   const switchMode = (m: ArticleMode) => {
     setMode(m);
@@ -309,6 +342,67 @@ export function CoverageAssistApp() {
       });
       return next;
     });
+  };
+
+  const applyHistoryTemplate = (entry: ArticleHistoryEntry) => {
+    const s = entry.snapshot;
+    setMode(s.mode);
+    setSliders(s.sliders);
+    setStylePreset(s.stylePreset);
+    setPrimaryAngle(s.primaryAngle);
+    setTone(s.tone);
+    setAudience(s.audience);
+    setConfidence(s.confidence);
+    setWordCount(s.wordCount);
+    setQuickFormat(s.quickFormat);
+    setTags(s.tags);
+    setPlayerName(s.playerName);
+    setPosition(s.position);
+    setTeam(s.team);
+    setAgeGrade(s.ageGrade);
+    setEventName(s.eventName);
+    setPublicationName(s.publicationName);
+    setEvalNotes(s.evalNotes);
+    setGameNotes(s.gameNotes);
+    setTeamNotes(s.teamNotes);
+    setStorySpine(s.storySpine);
+    setMomentAnchor1(s.momentAnchor1);
+    setMomentAnchor2(s.momentAnchor2);
+    setMomentAnchor3(s.momentAnchor3);
+    setStatLine(s.statLine);
+    setVerifiedFacts(s.verifiedFacts);
+    setStructuredExtras(s.structuredExtras);
+    setQuote1(s.quote1);
+    setQuote2(s.quote2);
+    setQuote3(s.quote3);
+    setEspnDepthMode(s.espnDepthMode);
+    setVoicePunch(s.voicePunch);
+    setVoiceAnalytics(s.voiceAnalytics);
+    setVoiceScene(s.voiceScene);
+    setHeadlineOptions([]);
+    setRegenerateInstructions("");
+    setSerpContext("");
+    setSerpQuery("");
+    setStyleSample("");
+    setStyleSampleUrl("");
+    setStyleUrlInput("");
+    setEditMode(false);
+    setActiveHistoryTemplateId(entry.id);
+    const wc =
+      s.article.trim().split(/\s+/).filter(Boolean).length || s.wordCount;
+    setLastArticle({
+      article: s.article,
+      headline: s.headline,
+      mode: s.mode,
+      stylePreset: s.stylePreset,
+      tone: s.tone,
+      wordCount: wc,
+      modeLabel: MODE_LABELS[s.mode],
+      generatedAt: new Date().toISOString(),
+      hasStyleSample: false,
+    });
+    setLeftNotice(`Loaded template: ${entry.title}`);
+    setTimeout(() => setLeftNotice(""), 4500);
   };
 
   const updateSlider = (key: string, val: string) => {
@@ -450,6 +544,7 @@ export function CoverageAssistApp() {
       setLastArticle(data);
       setEditMode(false);
       setHeadlineOptions([]);
+      setActiveHistoryTemplateId(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setLeftNotice(`⚠ Generation failed: ${msg}`);
@@ -526,6 +621,7 @@ export function CoverageAssistApp() {
       setLastArticle(data);
       setEditMode(false);
       setHeadlineOptions([]);
+      setActiveHistoryTemplateId(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       alert(`Regenerate failed: ${msg}`);
@@ -632,33 +728,26 @@ export function CoverageAssistApp() {
     URL.revokeObjectURL(url);
   };
 
-  const downloadHTML = () => {
+  const downloadPDF = async () => {
     if (!lastArticle) return;
-    const art = lastArticle;
-    const lines = articleToString(art.article)
-      .split("\n")
-      .filter((l) => l.trim());
-    const headline = lines[0] || "Article";
-    const body = lines.slice(1).join("\n\n");
-    const pub = publicationName || "SportsPilot";
-    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><title>${headline}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400&display=swap" rel="stylesheet"/>
-<style>body{font-family:'Outfit',sans-serif;max-width:720px;margin:60px auto;padding:0 24px;color:#1a1a1a;line-height:1.8;}
-h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weight:900;line-height:1.15;margin-bottom:20px;}
-.meta{font-size:12px;color:#888;margin-bottom:32px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;}
-.body{font-size:17px;font-weight:300;white-space:pre-wrap;}
-</style></head><body>
-<h1>${headline}</h1>
-<div class="meta">${pub} · ${art.modeLabel || ""} · ${art.stylePreset || ""} · ${art.wordCount || 0} words</div>
-<div class="body">${body}</div>
-</body></html>`;
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `coverageassist-${headline.replace(/[^a-z0-9]/gi, "-").toLowerCase().slice(0, 40)}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const raw = articleToString(lastArticle.article).trim();
+    if (!raw) return;
+    try {
+      await downloadArticleAsPdf({
+        articleText: raw,
+        headlineFromState: lastArticle.headline,
+        publicationName: publicationName || "SportsPilot Scout Report",
+        playerName,
+        eventName,
+        mode: lastArticle.mode,
+        modeLabel: lastArticle.modeLabel,
+        stylePreset: lastArticle.stylePreset || stylePreset,
+        wordCount: lastArticle.wordCount,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Could not create PDF: ${msg}`);
+    }
   };
 
   useEffect(() => {
@@ -756,7 +845,17 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
         className={`loading-overlay ${loader.active ? "active" : ""}`}
         id="loadingOverlay"
       >
-        <div className="loader-ring" />
+        <div className="loader-mark" aria-hidden>
+          <div className="loader-mark-ring" />
+          <Image
+            className="loader-logo"
+            src="/logo-plain.png"
+            alt=""
+            width={168}
+            height={168}
+            priority
+          />
+        </div>
         <div className="loader-text" id="loaderText">
           {loader.title}
         </div>
@@ -767,7 +866,16 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
 
       <header className="topbar">
         <div className="topbar-brand">
-          <div className="brand-icon">CA</div>
+          <div className="brand-logo-wrap">
+            <Image
+              className="brand-logo"
+              src="/logo-plain.png"
+              alt=""
+              width={40}
+              height={40}
+              priority
+            />
+          </div>
           <div>
             <div className="brand-name">
               Coverage<span>Assist</span>AI
@@ -1015,6 +1123,20 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
                 placeholder="Short bullets the article may treat as confirmed context"
                 value={verifiedFacts}
                 onChange={(e) => setVerifiedFacts(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>
+                Structured extras (optional — mini box score, extra lines, or JSON)
+              </label>
+              <textarea
+                rows={3}
+                placeholder={
+                  "e.g. Final72–68 · Q1 18–14 · Team A 12 TO · or paste {\"period_scores\":[...]} — only what you know is true"
+                }
+                value={structuredExtras}
+                onChange={(e) => setStructuredExtras(e.target.value)}
+                style={{ fontFamily: "inherit", fontSize: 12 }}
               />
             </div>
             <div className="field">
@@ -1488,6 +1610,35 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
           </div>
 
           <div className="right-section">
+            <div className="panel-label">Quick output</div>
+            <div
+              style={{
+                fontSize: 9,
+                color: "var(--text3)",
+                lineHeight: 1.55,
+                marginBottom: 8,
+                letterSpacing: "0.03em",
+              }}
+            >
+              Same notes → different shapes: short recap, bullet preview, or a social
+              pack. Inspired by feed-to-article tools—without needing enterprise data
+              contracts.
+            </div>
+            <div className="chip-row" style={{ flexWrap: "wrap" }}>
+              {QUICK_FORMAT_OPTIONS.map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`chip ${quickFormat === val ? "active" : ""}`}
+                  onClick={() => applyQuickFormat(val)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="right-section">
             <div className="panel-label">Target Word Count</div>
             <div
               style={{
@@ -1527,6 +1678,98 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
               Player Spotlight 450–700w · Recruiting 350–550w
               <br />
               Game Recap 500–900w · Event Standouts 500–700w
+            </div>
+          </div>
+
+          <div className="right-section" id="historyTemplatesSection">
+            <div className="panel-label">History & templates</div>
+            <div
+              style={{
+                fontSize: 9,
+                color: "var(--text3)",
+                lineHeight: 1.55,
+                marginBottom: 10,
+                letterSpacing: "0.03em",
+              }}
+            >
+              Demo runs you can load into the form and canvas—swap your own notes
+              after applying. Later this can list real saves from your account.
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                maxHeight: 280,
+                overflowY: "auto",
+                paddingRight: 4,
+              }}
+            >
+              {ARTICLE_HISTORY_TEMPLATES.map((entry) => {
+                const active = activeHistoryTemplateId === entry.id;
+                return (
+                  <div
+                    key={entry.id}
+                    style={{
+                      border: `1px solid ${active ? "var(--accent3)" : "var(--border)"}`,
+                      borderRadius: 8,
+                      padding: "8px 10px",
+                      background: active
+                        ? "rgba(8, 145, 178, 0.06)"
+                        : "var(--surface2)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "var(--text)",
+                        lineHeight: 1.35,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {entry.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: "var(--text3)",
+                        marginBottom: 6,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {entry.metaLine}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: "var(--text2)",
+                        lineHeight: 1.45,
+                        marginBottom: 8,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical" as const,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {entry.excerpt}
+                    </div>
+                    <button
+                      type="button"
+                      className="toolbar-btn"
+                      style={{
+                        width: "100%",
+                        justifyContent: "center",
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                      onClick={() => applyHistoryTemplate(entry)}
+                    >
+                      Use as template
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -1758,9 +2001,9 @@ h1{font-family:'Playfair Display',serif;font-size:clamp(28px,4vw,42px);font-weig
             <button
               type="button"
               className="export-btn download"
-              onClick={downloadHTML}
+              onClick={() => void downloadPDF()}
             >
-              🌐 Download .html
+              Download .pdf
             </button>
           </div>
 

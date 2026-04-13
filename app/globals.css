@@ -57,18 +57,23 @@ body {
   align-items: center;
   gap: 12px;
 }
-.brand-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--accent);
-  border-radius: 4px;
+.brand-logo-wrap {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Bebas Neue", sans-serif;
-  font-size: 16px;
-  color: #fff;
-  letter-spacing: 0.5px;
+  border-radius: 6px;
+  background: #0a0a0a;
+  padding: 4px;
+  box-shadow: 0 0 0 1px rgba(164, 255, 0, 0.25);
+}
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .brand-name {
   font-family: "Bebas Neue", sans-serif;
@@ -859,18 +864,49 @@ input[type="range"] {
 .loading-overlay.active {
   display: flex;
 }
-.loader-ring {
-  width: 52px;
-  height: 52px;
-  border: 3px solid var(--border2);
-  border-top-color: var(--accent);
+/* Loader: plain shield + lime ring + glow (larger for visibility) */
+.loader-mark {
+  position: relative;
+  width: min(52vw, 220px);
+  height: min(52vw, 220px);
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.loader-mark-ring {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  animation: spin-cai 0.7s linear infinite;
-  box-shadow: 0 0 0 1px rgba(29, 78, 216, 0.1);
+  border: 4px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #bfff00;
+  border-right-color: rgba(191, 255, 0, 0.35);
+  animation: spin-cai 0.85s linear infinite;
+  box-shadow: 0 0 28px rgba(127, 255, 0, 0.22);
+}
+.loader-logo {
+  position: relative;
+  z-index: 1;
+  width: min(42vw, 168px) !important;
+  height: min(42vw, 168px) !important;
+  max-width: 85%;
+  max-height: 85%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(127, 255, 0, 0.5));
+  animation: ca-loader-glow 2.2s ease-in-out infinite;
 }
 @keyframes spin-cai {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes ca-loader-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 6px rgba(127, 255, 0, 0.45));
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(191, 255, 0, 0.9));
   }
 }
 .loader-text {
