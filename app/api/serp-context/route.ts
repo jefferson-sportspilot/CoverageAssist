@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-type Organic = { title?: string; snippet?: string; link?: string };
+type SerperOrganic = { title?: string; snippet?: string; link?: string };
 
 export async function POST(req: NextRequest) {
-  const key = process.env.SERPAPI_KEY?.trim();
+  const key =
+    process.env.SERPER_API_KEY?.trim() || process.env.SERPAPI_KEY?.trim();
   if (!key) {
     return NextResponse.json(
       {
         error:
-          "SERPAPI_KEY is not set on the server. Add it to .env.local for web research.",
+          "SERPER_API_KEY is not set on the server. Add it to .env.local for web research (legacy SERPAPI_KEY is also accepted).",
       },
       { status: 501 }
     );
@@ -28,31 +29,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "query required" }, { status: 400 });
   }
 
-  const params = new URLSearchParams({
-    engine: "google",
-    q,
-    api_key: key,
-    num: "8",
-  });
-
   try {
-    const res = await fetch(`https://serpapi.com/search?${params}`, {
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "X-API-KEY": key,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ q, num: 8 }),
       next: { revalidate: 0 },
     });
     if (!res.ok) {
+      const errText = await res.text().catch(() => "");
       return NextResponse.json(
-        { error: `SerpAPI returned ${res.status}` },
+        {
+          error: `Serper returned ${res.status}${errText ? `: ${errText.slice(0, 200)}` : ""}`,
+        },
         { status: 502 }
       );
     }
     const data = (await res.json()) as {
-      organic_results?: Organic[];
+      organic?: SerperOrganic[];
       error?: string;
+      message?: string;
     };
-    if (data.error) {
-      return NextResponse.json({ error: data.error }, { status: 502 });
+    if (data.error || data.message) {
+      return NextResponse.json(
+        { error: data.error || data.message || "Serper error" },
+        { status: 502 }
+      );
     }
-    const organic = data.organic_results ?? [];
+    const organic = data.organic ?? [];
     const snippets = organic
       .slice(0, 5)
       .map(
@@ -69,7 +76,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ text: snippets });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "SerpAPI request failed";
+    const msg = e instanceof Error ? e.message : "Serper request failed";
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 }

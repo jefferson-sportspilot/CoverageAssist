@@ -28,20 +28,21 @@
   --header-h:  58px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 
 /* ══ TOP BAR ══ */
-.topbar{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(15,23,42,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;}
-.topbar-brand{display:flex;align-items:center;gap:12px;}
+.topbar{position:fixed;top:0;left:0;right:0;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 6px rgba(15,23,42,0.06);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:100;gap:10px;}
+.topbar-brand{display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .brand-icon{width:32px;height:32px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;letter-spacing:0.5px;}
 .brand-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:var(--text);}
 .brand-name span{color:var(--accent);}
 .brand-suite{font-size:10px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-top:-2px;}
-.topbar-mode-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:6px;padding:3px;}
+.topbar-mode-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:6px;padding:3px;flex:1;min-width:0;justify-content:center;}
 .mode-tab{padding:6px 14px;border:none;background:transparent;color:var(--text3);font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border-radius:4px;transition:all 0.18s;font-family:'Inter',sans-serif;white-space:nowrap;}
 .mode-tab:hover{color:var(--text2);background:var(--surface3);}
 .mode-tab.active{background:var(--accent);color:#fff;}
-.topbar-actions{display:flex;align-items:center;gap:8px;}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .topbar-pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:10px;font-weight:600;color:var(--text2);letter-spacing:0.05em;text-transform:uppercase;}
 .topbar-pill.live{border-color:var(--green);color:var(--green);background:rgba(22,163,74,0.06);}
 
@@ -200,12 +201,96 @@ input[type=range]{appearance:none;width:100%;height:4px;background:transparent;o
 .wc-slider{width:100%;appearance:none;height:3px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;}
 .wc-slider::-webkit-slider-thumb{appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(29,78,216,0.3);}
 
-/* ── MOBILE RESPONSIVE ── */
-@media(max-width:900px){
-  .workspace{grid-template-columns:1fr;}
-  .panel-left,.panel-right{display:none;}
-  .panel-center{grid-column:1;}
+/* ── Drawer overlay (mobile) ── */
+.drawer-backdrop{display:none;position:fixed;inset:0;top:var(--header-h);background:rgba(15,23,42,0.4);z-index:150;-webkit-tap-highlight-color:transparent;}
+.drawer-backdrop.active{display:block;}
+
+/* ── Compact mode (mobile header) ── */
+.topbar-mode-compact{display:none;flex:1;min-width:0;max-width:min(220px,42vw);margin:0 8px;}
+.mode-select{width:100%;padding:6px 10px;font-size:11px;font-weight:600;font-family:'Inter',sans-serif;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:6px;cursor:pointer;outline:none;}
+.mode-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(29,78,216,0.15);}
+
+/* ── TABLET: narrower rails ── */
+@media(max-width:1199px){
+  :root{--panel-l:220px;--panel-r:235px;}
+  .article-canvas-wrap{padding:28px 36px;}
+  .topbar{padding:0 14px;}
+}
+@media(max-width:1050px){
+  :root{--panel-l:200px;--panel-r:210px;}
+  .article-toolbar{flex-wrap:wrap;row-gap:8px;}
+  .article-toolbar-left,.article-toolbar-right{flex-wrap:wrap;}
+  .mode-tab{padding:6px 10px;font-size:10px;}
+  .topbar-mode-tabs{
+    justify-content:flex-start;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:thin;
+  }
+  .topbar-mode-tabs::-webkit-scrollbar{height:3px;}
+  .topbar-mode-tabs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+}
+
+/* ── MOBILE / small tablet: single column + drawers ── */
+@media(max-width:899px){
+  html,body{overflow:hidden;-webkit-overflow-scrolling:touch;}
+  .topbar{padding:0 10px;gap:6px;}
   .topbar-mode-tabs{display:none;}
+  .topbar-mode-compact{display:flex;align-items:center;}
+  .topbar-actions{flex-shrink:0;gap:6px;}
+  .topbar-pill{padding:3px 8px;font-size:9px;}
+  .brand-name{font-size:18px;letter-spacing:1px;}
+  .brand-suite{display:none;}
+  .workspace{
+    grid-template-columns:1fr !important;
+    grid-template-rows:1fr;
+    --left-width:0;
+    --right-width:0;
+  }
+  .panel-left,.panel-center,.panel-right{grid-column:1;grid-row:1;min-width:0;}
+  .panel-center{z-index:1;min-height:0;}
+  .panel-left,.panel-right{z-index:2;}
+  .panel-left,.panel-right{
+    display:flex !important;
+    position:fixed;top:var(--header-h);bottom:0;
+    width:min(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px),420px);
+    max-width:100%;
+    z-index:160;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    box-shadow:8px 0 32px rgba(15,23,42,0.12);
+    transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    -webkit-overflow-scrolling:touch;
+  }
+  .panel-left{
+    left:0;right:auto;
+    transform:translateX(-100%);
+    padding-bottom:max(16px,env(safe-area-inset-bottom));
+    pointer-events:none;
+  }
+  .workspace.drawer-left-open .panel-left{transform:translateX(0);pointer-events:auto;}
+  .panel-right{
+    right:0;left:auto;
+    transform:translateX(100%);
+    box-shadow:-8px 0 32px rgba(15,23,42,0.12);
+    padding-bottom:max(16px,env(safe-area-inset-bottom));
+    pointer-events:none;
+  }
+  .workspace.drawer-right-open .panel-right{transform:translateX(0);pointer-events:auto;}
+  .article-canvas-wrap{padding:20px 16px;}
+  .article-headline,.article-headline-edit{font-size:clamp(22px,6vw,32px);}
+  .article-body,.article-body-edit{font-size:14px;line-height:1.75;}
+  .article-meta-chip{font-size:9px;padding:3px 8px;}
+  .toolbar-btn{padding:6px 10px;font-size:10px;}
+  .toolbar-btn.compact{padding:6px 8px;}
+  .word-count-bar{flex-wrap:wrap;gap:6px;padding:8px 14px;}
+}
+
+@media(max-width:480px){
+  .topbar-brand{min-width:0;}
+  .brand-icon{width:28px;height:28px;font-size:14px;}
+  .topbar-mode-compact{max-width:min(200px,50vw);}
+  .panel-left,.panel-right{width:100%;}
 }
 </style>
 </head>
@@ -234,11 +319,23 @@ input[type=range]{appearance:none;width:100%;height:4px;background:transparent;o
     <button class="mode-tab"        data-mode="team_story"       onclick="cai.switchMode('team_story',this)">Team Story</button>
     <button class="mode-tab"        data-mode="recruiting_report" onclick="cai.switchMode('recruiting_report',this)">Recruiting Report</button>
   </div>
+  <div class="topbar-mode-compact">
+    <label class="sr-only" for="modeSelect">Article mode</label>
+    <select id="modeSelect" class="mode-select" aria-label="Article mode">
+      <option value="player_article" selected>Player Article</option>
+      <option value="game_recap">Game Recap</option>
+      <option value="event_standouts">Event Standouts</option>
+      <option value="team_story">Team Story</option>
+      <option value="recruiting_report">Recruiting Report</option>
+    </select>
+  </div>
   <div class="topbar-actions">
     <span class="topbar-pill live" id="sessionPill">SESSION READY</span>
     <span class="topbar-pill" id="modePill">PLAYER ARTICLE</span>
   </div>
 </header>
+
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="cai.closeDrawers()" aria-hidden="true"></div>
 
 <!-- ══ THREE-PANEL WORKSPACE ══ -->
 <div class="workspace">
@@ -478,7 +575,9 @@ const state = {
   lastArticle: null,
   editMode:    false,
   leftCollapsed: false,
-  rightCollapsed: false
+  rightCollapsed: false,
+  drawerLeftOpen: false,
+  drawerRightOpen: false
 };
 
 // ── Slider definitions per mode ──
@@ -527,22 +626,62 @@ function escapeHtml(text) {
     .replace(/'/g, '&#39;');
 }
 
+function isDrawerBreakpoint() {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 899px)').matches;
+}
+
 function syncPanelLayout() {
   const workspace = document.querySelector('.workspace');
   if (!workspace) return;
 
-  workspace.classList.toggle('left-collapsed', state.leftCollapsed);
-  workspace.classList.toggle('right-collapsed', state.rightCollapsed);
+  const drawerBp = isDrawerBreakpoint();
+  const backdrop = document.getElementById('drawerBackdrop');
+
+  if (drawerBp) {
+    workspace.classList.remove('left-collapsed', 'right-collapsed');
+    workspace.classList.toggle('drawer-left-open', state.drawerLeftOpen);
+    workspace.classList.toggle('drawer-right-open', state.drawerRightOpen);
+    if (backdrop) {
+      backdrop.classList.toggle('active', state.drawerLeftOpen || state.drawerRightOpen);
+      backdrop.setAttribute('aria-hidden', state.drawerLeftOpen || state.drawerRightOpen ? 'false' : 'true');
+    }
+  } else {
+    workspace.classList.remove('drawer-left-open', 'drawer-right-open');
+    if (backdrop) {
+      backdrop.classList.remove('active');
+      backdrop.setAttribute('aria-hidden', 'true');
+    }
+    workspace.classList.toggle('left-collapsed', state.leftCollapsed);
+    workspace.classList.toggle('right-collapsed', state.rightCollapsed);
+  }
 
   const leftBtn = document.getElementById('toggleLeftBtn');
   const rightBtn = document.getElementById('toggleRightBtn');
-  if (leftBtn) leftBtn.textContent = state.leftCollapsed ? '▶ Inputs' : '◀ Inputs';
-  if (rightBtn) rightBtn.textContent = state.rightCollapsed ? 'Style ◀' : 'Style ▶';
+  const leftHidden = drawerBp ? !state.drawerLeftOpen : state.leftCollapsed;
+  const rightHidden = drawerBp ? !state.drawerRightOpen : state.rightCollapsed;
+  if (leftBtn) leftBtn.textContent = leftHidden ? '▶ Inputs' : '◀ Inputs';
+  if (rightBtn) rightBtn.textContent = rightHidden ? 'Style ◀' : 'Style ▶';
 }
 
+cai.closeDrawers = function() {
+  state.drawerLeftOpen = false;
+  state.drawerRightOpen = false;
+  syncPanelLayout();
+};
+
 cai.togglePanel = function(side) {
-  if (side === 'left') state.leftCollapsed = !state.leftCollapsed;
-  if (side === 'right') state.rightCollapsed = !state.rightCollapsed;
+  if (isDrawerBreakpoint()) {
+    if (side === 'left') {
+      state.drawerLeftOpen = !state.drawerLeftOpen;
+      if (state.drawerLeftOpen) state.drawerRightOpen = false;
+    } else {
+      state.drawerRightOpen = !state.drawerRightOpen;
+      if (state.drawerRightOpen) state.drawerLeftOpen = false;
+    }
+  } else {
+    if (side === 'left') state.leftCollapsed = !state.leftCollapsed;
+    if (side === 'right') state.rightCollapsed = !state.rightCollapsed;
+  }
   syncPanelLayout();
 };
 
@@ -620,7 +759,15 @@ cai.selectChip = function(type, value, btn) {
 cai.switchMode = function(mode, btn) {
   state.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    document.querySelectorAll('.mode-tab').forEach(b => {
+      if (b.getAttribute('data-mode') === mode) b.classList.add('active');
+    });
+  }
+  const modeSelect = document.getElementById('modeSelect');
+  if (modeSelect && modeSelect.value !== mode) modeSelect.value = mode;
   document.getElementById('modePill').textContent = MODE_LABELS[mode] || mode;
   document.getElementById('toolbarMode').textContent = MODE_LABELS[mode] || mode;
 
@@ -1036,6 +1183,30 @@ function init() {
   // Enter key in tag input
   document.getElementById('l-tagInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') { e.preventDefault(); cai.addTag(); }
+  });
+
+  const modeSelect = document.getElementById('modeSelect');
+  if (modeSelect) {
+    modeSelect.value = state.mode;
+    modeSelect.addEventListener('change', function() {
+      cai.switchMode(this.value, null);
+    });
+  }
+
+  var resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (!isDrawerBreakpoint()) {
+        state.drawerLeftOpen = false;
+        state.drawerRightOpen = false;
+      }
+      syncPanelLayout();
+    }, 100);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && isDrawerBreakpoint()) cai.closeDrawers();
   });
 
   // ── Pre-fill dummy data ──

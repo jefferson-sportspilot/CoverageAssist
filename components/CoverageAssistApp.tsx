@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   AUD_LABELS,
@@ -64,6 +65,23 @@ const PANEL_DEFAULT_RIGHT = 290;
 const CENTER_MIN = 220;
 const HANDLE_W = 6;
 
+const COMPACT_BREAKPOINT = "(max-width: 899px)";
+
+function useCompactLayout() {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === "undefined") return () => {};
+      const mq = window.matchMedia(COMPACT_BREAKPOINT);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(COMPACT_BREAKPOINT).matches,
+    () => false
+  );
+}
+
 export function CoverageAssistApp() {
   const [mode, setMode] = useState<ArticleMode>("player_article");
   const [stylePreset, setStylePreset] = useState("Neutral Reporter");
@@ -117,6 +135,42 @@ export function CoverageAssistApp() {
 
   const [leftPanelWidth, setLeftPanelWidth] = useState(PANEL_DEFAULT_LEFT);
   const [rightPanelWidth, setRightPanelWidth] = useState(PANEL_DEFAULT_RIGHT);
+
+  const compactLayout = useCompactLayout();
+  const [drawerLeftOpen, setDrawerLeftOpen] = useState(false);
+  const [drawerRightOpen, setDrawerRightOpen] = useState(false);
+
+  const closeDrawers = useCallback(() => {
+    setDrawerLeftOpen(false);
+    setDrawerRightOpen(false);
+  }, []);
+
+  const toggleLeftDrawer = useCallback(() => {
+    if (!compactLayout) return;
+    setDrawerLeftOpen((v) => !v);
+    setDrawerRightOpen(false);
+  }, [compactLayout]);
+
+  const toggleRightDrawer = useCallback(() => {
+    if (!compactLayout) return;
+    setDrawerRightOpen((v) => !v);
+    setDrawerLeftOpen(false);
+  }, [compactLayout]);
+
+  const closeLeftDrawer = useCallback(() => setDrawerLeftOpen(false), []);
+  const closeRightDrawer = useCallback(() => setDrawerRightOpen(false), []);
+
+  useEffect(() => {
+    if (!compactLayout) closeDrawers();
+  }, [compactLayout, closeDrawers]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && compactLayout) closeDrawers();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [compactLayout, closeDrawers]);
 
   const [uploadActive, setUploadActive] = useState(false);
   const [uploadZoneTitle, setUploadZoneTitle] = useState("📄 Upload Writing Sample");
@@ -495,7 +549,7 @@ export function CoverageAssistApp() {
   const fetchSerpContext = async () => {
     const q = serpQuery.trim();
     if (!q) {
-      setLeftNotice("Enter a search query for SerpAPI research.");
+      setLeftNotice("Enter a search query for Serper research.");
       setTimeout(() => setLeftNotice(""), 5000);
       return;
     }
@@ -508,12 +562,12 @@ export function CoverageAssistApp() {
       });
       const data = (await res.json()) as { text?: string; error?: string };
       if (!res.ok) {
-        throw new Error(data.error || `SerpAPI failed (${res.status})`);
+        throw new Error(data.error || `Serper failed (${res.status})`);
       }
       setSerpContext(data.text ?? "");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setLeftNotice(`⚠ Serp research failed: ${msg}`);
+      setLeftNotice(`⚠ Serper research failed: ${msg}`);
       setTimeout(() => setLeftNotice(""), 10000);
     } finally {
       setSerpLoading(false);
@@ -865,7 +919,17 @@ export function CoverageAssistApp() {
       </div>
 
       <header className="topbar">
-        <div className="topbar-brand">
+        {compactLayout && (drawerLeftOpen || drawerRightOpen) ? (
+          <button
+            type="button"
+            className="topbar-back-btn"
+            onClick={closeDrawers}
+            aria-label="Back to article"
+          >
+            ← Article
+          </button>
+        ) : null}
+        <div className="topbar-brand" aria-label="CoverageAssist AI">
           <div className="brand-logo-wrap">
             <Image
               className="brand-logo"
@@ -906,23 +970,80 @@ export function CoverageAssistApp() {
             </button>
           ))}
         </div>
+        <div className="topbar-mode-compact">
+          <label htmlFor="modeSelect" className="sr-only">
+            Article mode
+          </label>
+          <div className="mode-select-wrap">
+            <select
+              id="modeSelect"
+              className="mode-select"
+              aria-label="Article mode"
+              value={mode}
+              onChange={(e) => switchMode(e.target.value as ArticleMode)}
+            >
+              {(Object.entries(MODE_LABELS) as [ArticleMode, string][]).map(
+                ([m, label]) => (
+                  <option key={m} value={m}>
+                    {label}
+                  </option>
+                )
+              )}
+            </select>
+            <span className="mode-select-chevron" aria-hidden="true">
+              ▾
+            </span>
+          </div>
+        </div>
         <div className="topbar-actions">
           <span className="topbar-pill live" id="sessionPill">
             SESSION READY
           </span>
-          <span className="topbar-pill" id="modePill">
-            {MODE_LABELS[mode].toUpperCase()}
-          </span>
+          {compactLayout ? null : (
+            <span className="topbar-pill" id="modePill">
+              {MODE_LABELS[mode].toUpperCase()}
+            </span>
+          )}
         </div>
       </header>
 
       <div
-        className="workspace"
-        style={{
-          gridTemplateColumns: `${leftPanelWidth}px ${HANDLE_W}px 1fr ${HANDLE_W}px ${rightPanelWidth}px`,
-        }}
+        className={[
+          "workspace",
+          compactLayout && drawerLeftOpen ? "drawer-left-open" : "",
+          compactLayout && drawerRightOpen ? "drawer-right-open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        style={
+          compactLayout
+            ? undefined
+            : {
+                gridTemplateColumns: `${leftPanelWidth}px ${HANDLE_W}px 1fr ${HANDLE_W}px ${rightPanelWidth}px`,
+              }
+        }
       >
+        {compactLayout ? (
+          <div
+            className={`drawer-backdrop${drawerLeftOpen || drawerRightOpen ? " active" : ""}`}
+            onClick={closeDrawers}
+            aria-hidden={!drawerLeftOpen && !drawerRightOpen}
+            role="presentation"
+          />
+        ) : null}
         <div className="panel-left" id="panelLeft">
+          {compactLayout ? (
+            <div className="panel-drawer-header">
+              <button
+                type="button"
+                className="panel-drawer-back"
+                onClick={closeLeftDrawer}
+              >
+                ← Back
+              </button>
+              <span className="panel-drawer-title">Inputs & evaluation</span>
+            </div>
+          ) : null}
           <div className="panel-section" id="section-player-info">
             <div className="panel-label">Player / Event Info</div>
             <div className="field">
@@ -1049,7 +1170,7 @@ export function CoverageAssistApp() {
               }}
             >
               Story spine, moment anchors, and stat line give the model concrete scenes and
-              checkable numbers. Serp snippets stay background only unless they match notes.
+              checkable numbers. Serper snippets stay background only unless they match notes.
             </div>
             <div className="field" style={{ marginBottom: 8 }}>
               <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1321,6 +1442,26 @@ export function CoverageAssistApp() {
         <div className="panel-center">
           <div className="article-toolbar">
             <div className="article-toolbar-left">
+              {compactLayout ? (
+                <>
+                  <button
+                    type="button"
+                    className="toolbar-btn compact"
+                    title="Open or close inputs"
+                    onClick={toggleLeftDrawer}
+                  >
+                    {drawerLeftOpen ? "◀ Inputs" : "▶ Inputs"}
+                  </button>
+                  <button
+                    type="button"
+                    className="toolbar-btn compact"
+                    title="Open or close style controls"
+                    onClick={toggleRightDrawer}
+                  >
+                    {drawerRightOpen ? "Style ▶" : "Style ◀"}
+                  </button>
+                </>
+              ) : null}
               <span className="article-meta-chip mode" id="toolbarMode">
                 {MODE_LABELS[mode]}
               </span>
@@ -1372,6 +1513,14 @@ export function CoverageAssistApp() {
                   Select a mode, fill in your evaluation data and notes, then hit
                   Generate Article. Set word count to 500+ for ESPN-caliber depth.
                 </p>
+                {compactLayout ? (
+                  <p className="article-empty-hint">
+                    <strong>Tip:</strong> Tap <strong>▶ Inputs</strong> for all text
+                    fields and evaluator notes. The <strong>Style</strong> panel only
+                    has preset buttons (not a text editor). After you generate, use{" "}
+                    <strong>Edit mode</strong> to change the article text.
+                  </p>
+                ) : null}
               </div>
             ) : editMode ? (
               <div>
@@ -1491,6 +1640,24 @@ export function CoverageAssistApp() {
         />
 
         <div className="panel-right">
+          {compactLayout ? (
+            <div className="panel-drawer-header">
+              <button
+                type="button"
+                className="panel-drawer-back"
+                onClick={closeRightDrawer}
+              >
+                ← Back
+              </button>
+              <span className="panel-drawer-title">Style & export</span>
+            </div>
+          ) : null}
+          {compactLayout ? (
+            <div className="panel-drawer-hint" role="note">
+              Presets and chips only here — open <strong>Inputs</strong> for notes,
+              player fields, and <strong>Generate</strong>.
+            </div>
+          ) : null}
           <div className="right-section">
             <div className="panel-label">Style Preset</div>
             <div className="preset-grid" id="presetGrid">
@@ -1850,7 +2017,7 @@ export function CoverageAssistApp() {
                 ) : null}
               </div>
               <div className="field" style={{ marginTop: 10 }}>
-                <label>SerpAPI — Web Research (optional)</label>
+                <label>Serper — Web Research (optional)</label>
                 <div
                   style={{
                     fontSize: 10,
@@ -1860,7 +2027,7 @@ export function CoverageAssistApp() {
                   }}
                 >
                   Snippets are sent with your generation request for richer context. Set{" "}
-                  <code style={{ fontSize: 9 }}>SERPAPI_KEY</code> in{" "}
+                  <code style={{ fontSize: 9 }}>SERPER_API_KEY</code> in{" "}
                   <code style={{ fontSize: 9 }}>.env.local</code>. Treat as background
                   noise — facts in the article must still come from your evaluator notes.
                 </div>
