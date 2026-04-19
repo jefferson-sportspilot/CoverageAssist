@@ -17,39 +17,39 @@
           }
         }
       },
-      "id": "edf386fa-af6b-4e06-a5b4-e51eb4be8a4d",
+      "id": "90763fd5-b6c8-4ff0-811d-ff64eab1ea4d",
       "name": "Return to Portal",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        3504,
-        384
+        800,
+        -400
       ]
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\n\nconst fullArticle = [\n  d.headline,\n  '',\n  d.introduction,\n  '',\n  d.mainBody,\n  '',\n  d.conclusion\n].join('\\n').trim();\n\nfunction countWords(text) {\n  return text.trim().split(/\\s+/).filter(Boolean).length;\n}\n\nreturn [{\n  json: {\n    success: true,\n    sessionId: d.sessionId,\n    publication: d.pubName,\n    mode: d.mode,\n    modeLabel: d.modeLabel,\n    style_preset: d.stylePreset,\n    tone: d.tone,\n    audience: d.audienceLabel,\n    confidence: d.confidence,\n    article: {\n      headline:     d.headline,\n      introduction: d.introduction,\n      main_body:    d.mainBody,\n      conclusion:   d.conclusion,\n      full_article: fullArticle,\n      seo_keywords: d.seoKeywords\n    },\n    meta: {\n      word_count_target:    d.wordCount,\n      word_count_actual:    countWords(fullArticle),\n      word_count_headline:  countWords(d.headline),\n      word_count_intro:     countWords(d.introduction),\n      word_count_body:      countWords(d.mainBody),\n      word_count_conclusion:countWords(d.conclusion),\n      generated_at:         d.timestamp,\n      pipeline: '3-stage'\n    }\n  }\n}];"
+        "jsCode": "const d = $input.first().json;\n\nconst fullArticle = [\n  d.headline,\n  '',\n  d.introduction,\n  '',\n  d.mainBody,\n  '',\n  d.conclusion\n].join('\\n').trim();\n\nfunction countWords(text) {\n  return text.trim().split(/\\s+/).filter(Boolean).length;\n}\n\nreturn [{\n  json: {\n    success: true,\n    sessionId: d.sessionId,\n    publication: d.pubName,\n    mode: d.mode,\n    modeLabel: d.modeLabel,\n    style_preset: d.stylePreset,\n    tone: d.tone,\n    audience: d.audienceLabel,\n    confidence: d.confidence,\n    intentPreset: d.intentPreset || '',\n    quickFormat: d.quickFormat || '',\n    qualityRules: d.qualityRules && typeof d.qualityRules === 'object' ? d.qualityRules : {},\n    article: {\n      headline:     d.headline,\n      introduction: d.introduction,\n      main_body:    d.mainBody,\n      conclusion:   d.conclusion,\n      full_article: fullArticle,\n      seo_keywords: d.seoKeywords\n    },\n    meta: {\n      word_count_target:    d.wordCount,\n      word_count_actual:    countWords(fullArticle),\n      word_count_headline:  countWords(d.headline),\n      word_count_intro:     countWords(d.introduction),\n      word_count_body:      countWords(d.mainBody),\n      word_count_conclusion:countWords(d.conclusion),\n      generated_at:         d.timestamp,\n      pipeline: '3-stage',\n      prompt_version:      d.promptVersion || 'unknown',\n      contract_version:    d.contractVersion || 'unknown',\n      run_duration_ms:     Math.max(0, Date.now() - (d.runStartedAtMs || Date.now())),\n      run_log: {\n        session_id: d.sessionId,\n        run_started_at_ms: d.runStartedAtMs || null,\n        run_finished_at_ms: Date.now()\n      }\n    }\n  }\n}];"
       },
-      "id": "ca985688-45e2-476f-befb-d824e5edc66b",
+      "id": "9f7df197-b21a-4077-8b19-35c5eae3bc61",
       "name": "Assemble Full Article",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3280,
-        384
+        576,
+        -400
       ]
     },
     {
       "parameters": {
         "jsCode": "const upstream = $('Build Stage 3 Prompt').first().json;\nconst conclusion = ($input.first().json.message?.content || $input.first().json.text || '').trim();\nreturn [{ json: { ...upstream, conclusion } }];"
       },
-      "id": "8d27f773-07a9-465b-946a-0b46b28567cb",
+      "id": "f32ad206-f90d-4703-aadb-c8be87eb2ce1",
       "name": "Parse Stage 3 Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3056,
-        384
+        352,
+        -400
       ]
     },
     {
@@ -76,13 +76,13 @@
           "temperature": 0.75
         }
       },
-      "id": "aeab675e-8b96-4df7-bffc-14d9e5df03aa",
+      "id": "66c930a6-c4df-482c-95df-d32d57e189ae",
       "name": "AI — Conclusion Writer",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1,
       "position": [
-        2704,
-        384
+        0,
+        -400
       ],
       "credentials": {
         "openAiApi": {
@@ -95,26 +95,26 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\n\nconst modeClosingGuides = {\n  player_article:    'End with a MEMORABLE closing line — 1-2 sentences (~40-60 words). Should feel like the final line of a magazine feature. Leave the reader with a clear, lasting impression of who this player is and where they are headed.',\n  game_recap:        'A forward-looking close — 1-2 sentences. Sets up the next game or storyline. What does this result mean for what comes next?',\n  event_standouts:   'An event summary paragraph (~60 words): What did the event reveal about this class or competition level? Then a forward-looking final sentence.',\n  team_story:        'A closing statement (~40-60 words) that captures the essence of this team in one memorable image or idea.',\n  recruiting_report: 'Evaluator Recommendation (2-3 sentences, ~50 words): The closing verdict. Calibrated to confidence level. Should read like a scout\\'s final note on a film session — actionable and specific.'\n};\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 3: Conclusion Writer.\n\nYou will write ONLY the conclusion/closing of a sports article. The headline, introduction, and main body have already been written.\n\nHEADLINE: ${d.headline}\n\nINTRODUCTION:\n${d.introduction}\n\nMAIN BODY (already written — your conclusion must flow naturally from this):\n${d.mainBody}\n\nCONCLUSION GUIDE:\n${modeClosingGuides[d.mode] || modeClosingGuides['player_article']}\n\n${d.sharedContext}\n\nCRITICAL REQUIREMENTS:\n- The conclusion must feel like a NATURAL continuation of the body above — no structural seam.\n- It must be MEMORABLE. Read it and ask: does this stay with you?\n- Do NOT introduce new facts or statistics that were not established in the body.\n- Do NOT repeat the lede or headline sentiment verbatim — reframe and elevate.\n- Calibrated to confidence level: ${d.confidence} — ${d.confidence === 'high' ? 'assertive, declarative, forward-leaning.' : d.confidence === 'cautious' ? 'evidence-anchored, conservative.' : 'balanced and evidence-grounded.'}\n\nHALLUCINATION GUARD: Every factual claim must trace to the source data. Do not invent.\n\nOUTPUT: Return ONLY the conclusion paragraph(s). No headline, no intro, no body. Begin directly with the closing paragraph.`;\n\nconst userPrompt = `Write the conclusion for this ${d.modeLabel}. It must close the article memorably and flow naturally from the main body above.`;\n\nreturn [{ json: { ...d, stage3_system: systemPrompt, stage3_user: userPrompt } }];"
       },
-      "id": "28e44e8b-5e93-4cb8-8196-b2e209e46a02",
+      "id": "d153d212-b4e0-4b62-b77c-8a6cb219ce2f",
       "name": "Build Stage 3 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2480,
-        384
+        -224,
+        -400
       ]
     },
     {
       "parameters": {
         "jsCode": "const upstream = $('Build Stage 2 Prompt').first().json;\nconst mainBody = ($input.first().json.message?.content || $input.first().json.text || '').trim();\nreturn [{ json: { ...upstream, mainBody } }];"
       },
-      "id": "405b1072-5778-4f33-98b3-04ac7a72e027",
+      "id": "7a567ac5-ada7-4890-b356-dcad72a228d5",
       "name": "Parse Stage 2 Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2256,
-        384
+        -448,
+        -400
       ]
     },
     {
@@ -141,13 +141,13 @@
           "temperature": 0.75
         }
       },
-      "id": "0a705f1f-a265-4a32-9994-fb795fd7a179",
+      "id": "0ddc8b7d-23d2-48de-a0cf-daadb7acbe21",
       "name": "AI — Main Body Writer",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1,
       "position": [
-        1904,
-        384
+        -800,
+        -400
       ],
       "credentials": {
         "openAiApi": {
@@ -160,26 +160,26 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\n\nconst modeBodyGuides = {\n  player_article: `MAIN BODY STRUCTURE:\n- Paragraph 1 (~60 words): Set the competitive context — the event, the stage, what was at stake.\n- Paragraph 2 (~80 words): Break down the headline performance. Use SPECIFIC numbers and moments from the notes. Show, don't tell.\n- Paragraph 3 (~80 words): Explain WHY this performance matters — what it reveals at a deeper level.\n- Paragraph 4 (~70 words, optional): A counterpoint or complexity — the honest observation that adds credibility.\n- Standout Qualities (2 paragraphs, ~120 words): Reference the standout tags. Each quality gets a specific observation. Avoid vague praise — anchor every claim.\n- Development Areas (1 paragraph, ~70 words): Written constructively. Frame as the refinement that unlocks the next level.\n- Projection (1-2 sentences, ~50 words): Calibrated to confidence level. Specific about level and role.`,\n\n  game_recap: `MAIN BODY STRUCTURE:\n- Paragraph 1 (~80 words): First-half context — who established momentum and how.\n- Paragraph 2 (~90 words): The turning point(s). Specific plays and sequences from the notes.\n- Paragraph 3 (~90 words): Key performer(s) breakdown. Stats anchored in narrative — not just numbers, but what they meant.\n- Paragraph 4 (~80 words): The closing stretch. How it was won or lost. The specific deciding moment.\n- Paragraph 5 (~60 words): Character/effort observations beyond the box score.\n- Contextual Significance (1 paragraph, ~70 words): Season implications, rivalry context, what the result means going forward.`,\n\n  event_standouts: `MAIN BODY STRUCTURE:\n- Top Performer #1 (3-4 sentences, ~130 words): Name, position, team — what they did, how they did it, a specific defining moment, and what it means for their trajectory.\n- Top Performer #2 (same structure, ~130 words).\n- Top Performer #3 (same structure, ~130 words).\n- Notable Mentions (2-3 players, 2-3 sentences each, ~100 words total): Brief but specific — name, one defining quality, one standout moment.`,\n\n  team_story: `MAIN BODY STRUCTURE:\n- Defining Characteristics (3 paragraphs, ~200 words total):\n    Paragraph 1: Their style of play — specific and tactical.\n    Paragraph 2: The chemistry and culture — how they operate as a unit.\n    Paragraph 3: The coaching imprint — how the system shows up in how they play.\n- Key Contributors (2-3 players, ~60 words each): Name, role, and specific contribution to team identity.\n- Narrative Arc (1 paragraph, ~80 words): Is this team ascending, plateauing, or battling adversity?`,\n\n  recruiting_report: `MAIN BODY STRUCTURE:\n- Player Overview (1 paragraph, ~80 words): Position, class/grade, physical profile, team, event. Baseline quickly.\n- Evaluation Snapshot (~60 words): Translate slider scores and standout tags into natural language narrative — not a list.\n- Strength #1 (~70 words): The observation, the specific evidence, what it means at the next level.\n- Strength #2 (~70 words): Same structure.\n- Strength #3 (~70 words): Same structure.\n- Development Areas (1-2 paragraphs, ~90 words): Honest, specific, constructive — what scouts and coaches will probe.\n- Fit Profile (1 paragraph, ~70 words): What system suits this player? What program level is realistic and why?`\n};\n\nconst targetBodyWords = Math.round(d.wordCount * 0.65);\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 2: Main Body Writer.\n\nYou will write ONLY the main body of a sports article. The headline and introduction have already been written — do NOT repeat them.\n\nHEADLINE ALREADY WRITTEN: ${d.headline}\nINTRODUCTION ALREADY WRITTEN:\n${d.introduction}\n\n${modeBodyGuides[d.mode] || modeBodyGuides['player_article']}\n\nTARGET: ~${targetBodyWords} words for the body.\n\n${d.sharedContext}\n\nESPN / PROFESSIONAL STANDARD REQUIREMENTS:\n- Every paragraph must earn its place. No filler, no padding.\n- Use SPECIFIC language — not \"showed great athleticism\" but \"exploded off the first step to turn a 9-foot closeout into a layup opportunity.\"\n- VARY sentence structure: mix short punchy sentences with longer narrative builds.\n- ANCHOR statistics in narrative: not \"scored 24 points\" but explain what those points meant in context.\n- Each section must flow naturally into the next — no structural seams.\n\nHALLUCINATION GUARD: Every factual claim must trace directly to the source data. Do not invent names, scores, opponents, or biographical details.\n\nOUTPUT: Return ONLY the main body paragraphs. No headline, no introduction, no conclusion. Begin directly with the first body paragraph.`;\n\nconst userPrompt = `Write the main body for this ${d.modeLabel}. Target ~${targetBodyWords} words. Follow the body structure guide above precisely.`;\n\nreturn [{ json: { ...d, stage2_system: systemPrompt, stage2_user: userPrompt } }];"
       },
-      "id": "c73d287c-6af2-432b-8a61-0fb8e53ab347",
+      "id": "59ca7b3f-9f2d-44b2-8ddd-adce5f208eaa",
       "name": "Build Stage 2 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
-        384
+        -1024,
+        -400
       ]
     },
     {
       "parameters": {
         "jsCode": "const upstream = $('Build Stage 1 Prompt').first().json;\nconst stage1Raw = $input.first().json.message?.content || $input.first().json.text || '';\n\nconst headlineMatch   = stage1Raw.match(/HEADLINE:\\s*(.+?)(?=\\n|$)/);\nconst introMatch      = stage1Raw.match(/INTRODUCTION:\\s*([\\s\\S]+?)(?=SEO KEYWORDS:|$)/);\nconst seoMatch        = stage1Raw.match(/SEO KEYWORDS:\\s*([\\s\\S]+?)$/);\n\nconst headline    = (headlineMatch?.[1]  || '').trim();\nconst introduction= (introMatch?.[1]     || '').trim();\nconst seoKeywords = (seoMatch?.[1]       || '').trim();\n\nreturn [{ json: { ...upstream, stage1_raw: stage1Raw, headline, introduction, seoKeywords } }];"
       },
-      "id": "0df58df8-0281-4d73-9007-3046bb3835bf",
+      "id": "b7e971c4-3de2-47f6-bc4d-9452b88d3e90",
       "name": "Parse Stage 1 Output",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1456,
-        384
+        -1248,
+        -400
       ]
     },
     {
@@ -206,13 +206,13 @@
           "temperature": 0.75
         }
       },
-      "id": "0c1d56a6-fdfa-4581-9250-503d5928e1be",
+      "id": "8e34d605-3db3-49ec-a0b0-99fcc72d1e90",
       "name": "AI — Title, Intro & SEO",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1,
       "position": [
-        1104,
-        384
+        -1600,
+        -400
       ],
       "credentials": {
         "openAiApi": {
@@ -225,39 +225,39 @@
       "parameters": {
         "jsCode": "const d = $input.first().json;\n\nconst modeHeadlineGuides = {\n  player_article:    'A specific, vivid headline that captures the player\\'s defining quality. Example style: \"The Floor General Nobody Saw Coming\" or \"Thompson\\'s Vision Is Ahead of His Time.\"',\n  game_recap:        'A headline that captures the game\\'s defining moment or narrative arc.',\n  event_standouts:   'A headline that captures the event\\'s top story or breakout performer.',\n  team_story:        'Team identity in one vivid, memorable phrase.',\n  recruiting_report: 'Projection-forward. \"The Point Guard Built for the Modern Game\" — not generic.'\n};\n\nconst systemPrompt = `You are CoverageAssistAI — Stage 1: Title, Introduction & SEO.\n\nYour job is to produce THREE things for a sports article:\n1. HEADLINE — ${modeHeadlineGuides[d.mode] || 'A compelling, specific headline.'}\n2. INTRODUCTION (lede) — 2-3 sentences (~60-80 words). Open with the most memorable single moment or quality. Drop the reader into a specific scene or situation. Make them want to read the next paragraph. For a recruiting report, set the player baseline quickly and lead with the highest-value observation.\n3. SEO KEYWORDS — A comma-separated list of 8-12 targeted SEO keywords/phrases relevant to this article. Include: player name, position, team, event name, relevant sports terms, and audience-specific terms (e.g. \"basketball recruiting\", \"point guard prospect\").\n\n${d.sharedContext}\n\nHALLUCINATION GUARD: Every factual claim must trace directly to the source data above. Do not invent stats, names, or moments.\n\nOUTPUT FORMAT (use these exact labels, nothing else):\nHEADLINE: [your headline here]\n\nINTRODUCTION:\n[your lede paragraph here]\n\nSEO KEYWORDS:\n[keyword1, keyword2, keyword3, ...]`;\n\nconst userPrompt = `Generate the Headline, Introduction, and SEO Keywords for this ${d.modeLabel} about ${d.playerName || 'the subject'} at ${d.eventName || 'the event'}.`;\n\nreturn [{ json: { ...d, stage1_system: systemPrompt, stage1_user: userPrompt } }];"
       },
-      "id": "7a0b5154-1711-4173-85ad-0b6479d54127",
+      "id": "33a6edc6-e49e-4934-b1f3-01548a7c457d",
       "name": "Build Stage 1 Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
-        384
+        -1824,
+        -400
       ]
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.first().json;\n\nfunction sliderSummary(sliders) {\n  if (!sliders || !Object.keys(sliders).length) return '';\n  const lines = Object.entries(sliders).map(([k,v]) => {\n    const label = k.replace(/_/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase());\n    return `  ${label.padEnd(22)} ${v}/10`;\n  });\n  return 'EVALUATION SLIDERS:\\n' + lines.join('\\n');\n}\n\nconst contentLines = [];\nif (d.playerName) contentLines.push('Player: ' + d.playerName + (d.position ? ' — ' + d.position : '') + (d.team ? ' | ' + d.team : ''));\nif (d.ageGrade)   contentLines.push('Age/Grade: ' + d.ageGrade);\nif (d.eventName)  contentLines.push('Event: ' + d.eventName);\nif (d.evalNotes)  contentLines.push('\\nEVALUATOR NOTES (sole factual source — do not invent beyond these):\\n' + d.evalNotes);\nif (d.gameNotes)  contentLines.push('\\nGAME NOTES:\\n' + d.gameNotes);\nif (d.teamNotes)  contentLines.push('\\nTEAM NOTES:\\n' + d.teamNotes);\nconst sliderText = sliderSummary(d.sliders);\nif (sliderText)   contentLines.push('\\n' + sliderText);\nif (d.standoutTags.length) contentLines.push('\\nSTANDOUT TAGS: ' + d.standoutTags.join(' · '));\nif (d.serpContext && d.serpContext.length > 10) {\n  contentLines.push('\\nWEB RESEARCH SNIPPETS (SerpAPI — external context only; do NOT treat as verified facts unless consistent with evaluator notes):\\n' + d.serpContext.slice(0, 2500));\n}\nif (d.styleSampleUrl && d.styleSampleUrl.length > 8) {\n  contentLines.push('\\nSTYLE SAMPLE SOURCE URL (reference only): ' + d.styleSampleUrl);\n}\nconst spineGuide = {\n  stakes: 'Stakes — why this moment matters for standings/postseason pressure',\n  timeline: 'Timeline — how recent performances set up this game',\n  matchup: 'Matchup chess — counters, adjustments, and responses',\n  identity: 'Identity — role, team style, and what this performance signals',\n  legacy: 'Legacy/milestone framing (ONLY if supported by notes)',\n  injury_subplot: 'Availability/workload subplot (ONLY if supported by notes)'\n};\nif (d.storySpine && spineGuide[d.storySpine]) {\n  contentLines.push('\\nSTORY SPINE: ' + spineGuide[d.storySpine]);\n}\nif (d.momentAnchor1) contentLines.push('\\nMOMENT ANCHOR 1 (use as a concrete scene beat): ' + d.momentAnchor1);\nif (d.momentAnchor2) contentLines.push('\\nMOMENT ANCHOR 2: ' + d.momentAnchor2);\nif (d.momentAnchor3) contentLines.push('\\nMOMENT ANCHOR 3: ' + d.momentAnchor3);\nif (d.statLine) contentLines.push('\\nSTAT LINE / BOX (treat as factual anchor — do not invent beyond notes + this block):\\n' + d.statLine);\nif (d.verifiedFacts) contentLines.push('\\nVERIFIED FACTS:\\n' + d.verifiedFacts);\nif (d.quote1 || d.quote2 || d.quote3) {\n  const qs = [d.quote1, d.quote2, d.quote3].filter(Boolean);\n  if (qs.length) contentLines.push('\\nQUOTES TO WEAVE (optional):\\n' + qs.join('\\n---\\n'));\n}\nif (d.espnDepthMode) {\n  const targetW = Math.max(parseInt(d.wordCount,10) || 500, 650);\n  contentLines.push('\\nESPN-DEPTH MODE: Target at least ' + targetW + ' words. Section budgets: lede ~80–120w; stakes/nut ~120–180w; 2–3 evidence paragraphs tied to moment anchors; closing ~60–120w with a forward look. Ban vague clichés unless tied to a specific play (e.g. avoid empty \"electric\", \"locked in\", \"stepped up\").');\n  contentLines.push('VOICE MIX (1=subtle, 10=heavy): punch ' + (d.voicePunch||6) + '/10, analytics ' + (d.voiceAnalyticsDensity||6) + '/10, scene detail ' + (d.voiceSceneDetail||6) + '/10.');\n}\nconst __ma = [d.momentAnchor1, d.momentAnchor2, d.momentAnchor3].filter(Boolean);\nif (__ma.length) contentLines.push('\\nMOMENT ANCHORS (same beats in recap, bullets, social, and longform; paraphrase; do not invent new signature moments):\\n' + __ma.map((x, i) => '  ' + (i + 1) + '. ' + x).join('\\n'));\nif (d.templateContract) contentLines.push('\\nARTICLE STRUCTURE CONTRACT (follow section order; scale per-section shares to the target word count):\\n' + d.templateContract);\nif (d.structuredExtras) contentLines.push('\\nSTRUCTURED EXTRAS (optional mini box score, extra lines, or pasted JSON — factual only; do not extrapolate):\\n' + d.structuredExtras);\n\nconst quickFmt = {\n  recap_short: '\\nQUICK FORMAT — SHORT RECAP (200–350 words): Write a tight newspaper-style recap. Lead with outcome and one key performer line. If MOMENT ANCHORS are listed above, preserve the same numbered beats in shorter form. 2–3 short paragraphs maximum. No betting or fantasy angles unless explicitly in evaluator or game notes. Every stat must come from source data or STRUCTURED EXTRAS.',\n  preview_bullets: '\\nQUICK FORMAT — PREVIEW (bullets): Write a 2–3 sentence hook, then 5–7 bullet lines. At least two bullets should map to the MOMENT ANCHORS above when present. Cover what is happening, who, stakes, one key matchup or player to watch, availability only if in notes. End with one forward-looking line. Do not invent odds, spreads, or betting lines.',\n  social_pack: '\\nQUICK FORMAT — SOCIAL PACK: Use these exact headers on separate lines:\\nTWEET: (one line, max 280 characters)\\nTHREAD 1: / THREAD 2: / THREAD 3: (each max 280 characters; omit unused thread lines)\\nCAPTION 1: / CAPTION 2: / CAPTION 3: (each max 125 characters)\\nTHREAD lines should echo the same story beats as MOMENT ANCHORS when listed. Facts only from source data or STRUCTURED EXTRAS; no gambling unless in notes.',\n};\nif (quickFmt[d.quickFormat]) contentLines.push(quickFmt[d.quickFormat]);\nconst contentBlock = contentLines.join('\\n');\n\nconst presetGuides = {\n  'Neutral Reporter':      'Objective, factual, journalistic. No opinion unless clearly attributed.',\n  'Recruiting Analyst':    'Data-informed, projection-focused, coach-facing. Clinical but readable.',\n  'Scouting Breakdown':    'Technical, structured, category-driven. Specific, observational, layered.',\n  'Event Recap':           'Chronological flow, game-moment highlights, competitive context.',\n  'Player Spotlight':      'Narrative-first, character-driven. Celebratory but grounded.',\n  'High-Energy Feature':   'Bold, punchy, fast-paced. Vivid verbs. Short punchy sentences.',\n  'Feature Story':         'Narrative-driven and polished, blending scene setting with insight.',\n  'Professional Media':    'Polished, broadcast-quality, publication-ready.',\n  'Shortform Social':      'Tight, punchy, shareable. Built for social virality.',\n  'Development-Focused':   'Growth-minded, forward-looking, coachable-trait emphasis.',\n  'Coach/Recruiter Brief': 'Efficient, hierarchical, time-respecting. Front-load key data.'\n};\nconst audGuides = {\n  general_public:    'Write for a broad sports fan audience. Focus on narrative and entertainment.',\n  college_recruiters:'Write for college coaches. Lead with projectable skills and intangibles.',\n  coaches:           'Use technical terminology. Include tactical observations and system fit.',\n  parents_players:   'Encouraging, accessible tone. Celebrate effort and character.',\n  media_press:       'Polished media-standard prose. Headline-friendly, quotable sentences.',\n  social_media:      'Punchy, high-energy shortform designed for sharing.'\n};\nconst confGuides = {\n  high:     'Write with confident, assertive language. Use strong declarative statements.',\n  moderate: 'Balance confidence with appropriate qualification. Let evidence speak.',\n  measured: 'Use measured, evidence-anchored language. Qualify projections clearly.',\n  cautious: 'Write conservatively. Every claim must be directly supported by notes.'\n};\nconst styleInstruction = d.styleSample && d.styleSample.length > 50\n  ? `\\nSTYLE SAMPLE — ADOPT THIS WRITER'S VOICE (do NOT copy sentences, only the voice):\\n---\\n${d.styleSample.slice(0,1200)}\\n---`\n  : '';\n\nconst revisionInstruction = d.regenerateInstructions\n  ? `\\nREVISION REQUEST (MANDATORY):\\n${d.regenerateInstructions}\\n${d.rewriteContent ? `\\nCURRENT ARTICLE DRAFT TO REVISE (REFERENCE):\\n---\\n${d.rewriteContent.slice(0,3500)}\\n---` : ''}\\nFollow this revision request strictly while keeping all claims grounded in source data.`\n  : '';\n\nconst sharedContext = `\nPUBLICATION: ${d.pubName}\nARTICLE TYPE: ${d.modeLabel}\nSTYLE PRESET: ${d.stylePreset} — ${presetGuides[d.stylePreset]}\nTONE: ${d.tone} | AUDIENCE: ${d.audienceLabel} | CONFIDENCE: ${d.confidence}\n${audGuides[d.audience]}\n${confGuides[d.confidence]}${styleInstruction}${revisionInstruction}\n\nSOURCE DATA (all facts must trace to this — do not invent):\n${contentBlock}\n`;\n\nreturn [{ json: { ...d, contentBlock, sharedContext } }];"
+        "jsCode": "const d = $input.first().json;\n\nfunction sliderSummary(sliders) {\n  if (!sliders || !Object.keys(sliders).length) return '';\n  const lines = Object.entries(sliders).map(([k,v]) => {\n    const label = k.replace(/_/g,' ').replace(/\\b\\w/g,c=>c.toUpperCase());\n    return `  ${label.padEnd(22)} ${v}/10`;\n  });\n  return 'EVALUATION SLIDERS:\\n' + lines.join('\\n');\n}\n\nconst contentLines = [];\nif (d.playerName) contentLines.push('Player: ' + d.playerName + (d.position ? ' — ' + d.position : '') + (d.team ? ' | ' + d.team : ''));\nif (d.ageGrade)   contentLines.push('Age/Grade: ' + d.ageGrade);\nif (d.eventName)  contentLines.push('Event: ' + d.eventName);\nif (d.evalNotes)  contentLines.push('\\nEVALUATOR NOTES (sole factual source — do not invent beyond these):\\n' + d.evalNotes);\nif (d.gameNotes)  contentLines.push('\\nGAME NOTES:\\n' + d.gameNotes);\nif (d.teamNotes)  contentLines.push('\\nTEAM NOTES:\\n' + d.teamNotes);\nconst sliderText = sliderSummary(d.sliders);\nif (sliderText)   contentLines.push('\\n' + sliderText);\nif (d.standoutTags.length) contentLines.push('\\nSTANDOUT TAGS: ' + d.standoutTags.join(' · '));\nif (d.serpContext && d.serpContext.length > 10) {\n  contentLines.push('\\nWEB RESEARCH SNIPPETS (SerpAPI — external context only; do NOT treat as verified facts unless consistent with evaluator notes):\\n' + d.serpContext.slice(0, 2500));\n}\nif (d.styleSampleUrl && d.styleSampleUrl.length > 8) {\n  contentLines.push('\\nSTYLE SAMPLE SOURCE URL (reference only): ' + d.styleSampleUrl);\n}\nconst spineGuide = {\n  stakes: 'Stakes — why this moment matters for standings/postseason pressure',\n  timeline: 'Timeline — how recent performances set up this game',\n  matchup: 'Matchup chess — counters, adjustments, and responses',\n  identity: 'Identity — role, team style, and what this performance signals',\n  legacy: 'Legacy/milestone framing (ONLY if supported by notes)',\n  injury_subplot: 'Availability/workload subplot (ONLY if supported by notes)'\n};\nif (d.storySpine && spineGuide[d.storySpine]) {\n  contentLines.push('\\nSTORY SPINE: ' + spineGuide[d.storySpine]);\n}\nif (d.momentAnchor1) contentLines.push('\\nMOMENT ANCHOR 1 (use as a concrete scene beat): ' + d.momentAnchor1);\nif (d.momentAnchor2) contentLines.push('\\nMOMENT ANCHOR 2: ' + d.momentAnchor2);\nif (d.momentAnchor3) contentLines.push('\\nMOMENT ANCHOR 3: ' + d.momentAnchor3);\nif (d.statLine) contentLines.push('\\nSTAT LINE / BOX (treat as factual anchor — do not invent beyond notes + this block):\\n' + d.statLine);\nif (d.verifiedFacts) contentLines.push('\\nVERIFIED FACTS:\\n' + d.verifiedFacts);\nif (d.quote1 || d.quote2 || d.quote3) {\n  const qs = [d.quote1, d.quote2, d.quote3].filter(Boolean);\n  if (qs.length) contentLines.push('\\nQUOTES TO WEAVE (optional):\\n' + qs.join('\\n---\\n'));\n}\nif (d.espnDepthMode) {\n  const targetW = Math.max(parseInt(d.wordCount,10) || 500, 650);\n  contentLines.push('\\nESPN-DEPTH MODE: Target at least ' + targetW + ' words. Section budgets: lede ~80–120w; stakes/nut ~120–180w; 2–3 evidence paragraphs tied to moment anchors; closing ~60–120w with a forward look. Ban vague clichés unless tied to a specific play (e.g. avoid empty \"electric\", \"locked in\", \"stepped up\").');\n  contentLines.push('VOICE MIX (1=subtle, 10=heavy): punch ' + (d.voicePunch||6) + '/10, analytics ' + (d.voiceAnalyticsDensity||6) + '/10, scene detail ' + (d.voiceSceneDetail||6) + '/10.');\n}\nconst __ma = [d.momentAnchor1, d.momentAnchor2, d.momentAnchor3].filter(Boolean);\nif (__ma.length) contentLines.push('\\nMOMENT ANCHORS (same beats in recap, bullets, social, and longform; paraphrase; do not invent new signature moments):\\n' + __ma.map((x, i) => '  ' + (i + 1) + '. ' + x).join('\\n'));\nif (d.templateContract) contentLines.push('\\nARTICLE STRUCTURE CONTRACT (follow section order; scale per-section shares to the target word count):\\n' + d.templateContract);\nif (d.structuredExtras) contentLines.push('\\nSTRUCTURED EXTRAS (optional mini box score, extra lines, or pasted JSON — factual only; do not extrapolate):\\n' + d.structuredExtras);\n\nconst quickFmt = {\n  recap_short: '\\nQUICK FORMAT — SHORT RECAP (200–350 words): Write a tight newspaper-style recap. Lead with outcome and one key performer line. If MOMENT ANCHORS are listed above, preserve the same numbered beats in shorter form. 2–3 short paragraphs maximum. No betting or fantasy angles unless explicitly in evaluator or game notes. Every stat must come from source data or STRUCTURED EXTRAS.',\n  preview_bullets: '\\nQUICK FORMAT — PREVIEW (bullets): Write a 2–3 sentence hook, then 5–7 bullet lines. At least two bullets should map to the MOMENT ANCHORS above when present. Cover what is happening, who, stakes, one key matchup or player to watch, availability only if in notes. End with one forward-looking line. Do not invent odds, spreads, or betting lines.',\n  social_pack: '\\nQUICK FORMAT — SOCIAL PACK: Use these exact headers on separate lines:\\nTWEET: (one line, max 280 characters)\\nTHREAD 1: / THREAD 2: / THREAD 3: (each max 280 characters; omit unused thread lines)\\nCAPTION 1: / CAPTION 2: / CAPTION 3: (each max 125 characters)\\nTHREAD lines should echo the same story beats as MOMENT ANCHORS when listed. Facts only from source data or STRUCTURED EXTRAS; no gambling unless in notes.',\n};\nif (quickFmt[d.quickFormat]) contentLines.push(quickFmt[d.quickFormat]);\nif (d.intentPreset) contentLines.push('\\nINTENT PRESET: ' + d.intentPreset);\nif (d.qualityRules?.bannedPhrases?.length) contentLines.push('\\nBANNED PHRASES (never output verbatim):\\n' + d.qualityRules.bannedPhrases.map((x) => '  - ' + x).join('\\n'));\nconst __phrases = d.qualityRules?.preferredPhrasesByMode?.[d.mode];\nif (Array.isArray(__phrases) && __phrases.length) contentLines.push('\\nPREFERRED PHRASE BANK (use naturally):\\n' + __phrases.map((x) => '  - ' + x).join('\\n'));\nif (d.promptVersion || d.contractVersion) contentLines.push('\\nPROMPT TRACKING (internal): prompt ' + (d.promptVersion || 'n/a') + ' · contract ' + (d.contractVersion || 'n/a'));\nconst contentBlock = contentLines.join('\\n');\n\nconst presetGuides = {\n  'Neutral Reporter':      'Objective, factual, journalistic. No opinion unless clearly attributed.',\n  'Recruiting Analyst':    'Data-informed, projection-focused, coach-facing. Clinical but readable.',\n  'Scouting Breakdown':    'Technical, structured, category-driven. Specific, observational, layered.',\n  'Event Recap':           'Chronological flow, game-moment highlights, competitive context.',\n  'Player Spotlight':      'Narrative-first, character-driven. Celebratory but grounded.',\n  'High-Energy Feature':   'Bold, punchy, fast-paced. Vivid verbs. Short punchy sentences.',\n  'Feature Story':         'Narrative-driven and polished, blending scene setting with insight.',\n  'Professional Media':    'Polished, broadcast-quality, publication-ready.',\n  'Shortform Social':      'Tight, punchy, shareable. Built for social virality.',\n  'Development-Focused':   'Growth-minded, forward-looking, coachable-trait emphasis.',\n  'Coach/Recruiter Brief': 'Efficient, hierarchical, time-respecting. Front-load key data.'\n};\nconst audGuides = {\n  general_public:    'Write for a broad sports fan audience. Focus on narrative and entertainment.',\n  college_recruiters:'Write for college coaches. Lead with projectable skills and intangibles.',\n  coaches:           'Use technical terminology. Include tactical observations and system fit.',\n  parents_players:   'Encouraging, accessible tone. Celebrate effort and character.',\n  media_press:       'Polished media-standard prose. Headline-friendly, quotable sentences.',\n  social_media:      'Punchy, high-energy shortform designed for sharing.'\n};\nconst confGuides = {\n  high:     'Write with confident, assertive language. Use strong declarative statements.',\n  moderate: 'Balance confidence with appropriate qualification. Let evidence speak.',\n  measured: 'Use measured, evidence-anchored language. Qualify projections clearly.',\n  cautious: 'Write conservatively. Every claim must be directly supported by notes.'\n};\nconst styleInstruction = d.styleSample && d.styleSample.length > 50\n  ? `\\nSTYLE SAMPLE — ADOPT THIS WRITER'S VOICE (do NOT copy sentences, only the voice):\\n---\\n${d.styleSample.slice(0,1200)}\\n---`\n  : '';\n\nconst revisionInstruction = d.regenerateInstructions\n  ? `\\nREVISION REQUEST (MANDATORY):\\n${d.regenerateInstructions}\\n${d.rewriteContent ? `\\nCURRENT ARTICLE DRAFT TO REVISE (REFERENCE):\\n---\\n${d.rewriteContent.slice(0,3500)}\\n---` : ''}\\nFollow this revision request strictly while keeping all claims grounded in source data.`\n  : '';\n\nconst sharedContext = `\nPUBLICATION: ${d.pubName}\nARTICLE TYPE: ${d.modeLabel}\nSTYLE PRESET: ${d.stylePreset} — ${presetGuides[d.stylePreset]}\nTONE: ${d.tone} | AUDIENCE: ${d.audienceLabel} | CONFIDENCE: ${d.confidence}\n${audGuides[d.audience]}\n${confGuides[d.confidence]}${styleInstruction}${revisionInstruction}\n\nSOURCE DATA (all facts must trace to this — do not invent):\n${contentBlock}\n`;\n\nreturn [{ json: { ...d, contentBlock, sharedContext } }];"
       },
-      "id": "bd31bea6-2f23-4c57-ab27-272a19cf058b",
+      "id": "26e1fea7-b153-48d1-b848-2a480bbc4661",
       "name": "Build Shared Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        656,
-        384
+        -2048,
+        -400
       ]
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst validModes = ['player_article','game_recap','event_standouts','team_story','recruiting_report','recruiting_summary'];\nconst rawMode = (body.mode || 'player_article').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst normalizedMode = rawMode === 'recruiting_summary' ? 'recruiting_report' : rawMode;\nconst mode = validModes.includes(normalizedMode) ? normalizedMode : 'player_article';\nconst modeLabels = {\n  player_article:    'Player Feature Article',\n  game_recap:        'Game Recap',\n  event_standouts:   'Event Standouts',\n  team_story:        'Team Story',\n  recruiting_report: 'Recruiting Report'\n};\n\nconst validPresets = ['Neutral Reporter','Recruiting Analyst','Scouting Breakdown','Event Recap','Player Spotlight','High-Energy Feature','Feature Story','Professional Media','Shortform Social','Development-Focused','Coach/Recruiter Brief'];\nconst rawPreset = (body.style_preset || 'Neutral Reporter').trim();\nconst stylePreset = validPresets.includes(rawPreset) ? rawPreset : 'Neutral Reporter';\n\nconst validTones = ['analytical','narrative','energetic','neutral','technical','inspirational'];\nconst tone = validTones.includes((body.tone||'').toLowerCase()) ? body.tone.toLowerCase() : 'analytical';\n\nconst validAudiences = ['general_public','college_recruiters','coaches','parents_players','media_press','social_media'];\nconst rawAud = (body.audience||'general_public').toLowerCase().replace(/[\\s-]/g,'_');\nconst audience = validAudiences.includes(rawAud) ? rawAud : 'general_public';\nconst audienceLabels = {\n  general_public:   'General Sports Audience',\n  college_recruiters:'College Recruiters',\n  coaches:          'Coaches & Staff',\n  parents_players:  'Parents & Players',\n  media_press:      'Media & Press',\n  social_media:     'Social Media'\n};\n\nconst validConf = ['high','moderate','measured','cautious'];\nconst confidence = validConf.includes((body.confidence||'').toLowerCase()) ? body.confidence.toLowerCase() : 'moderate';\n\nconst validAngles = ['breakout_performance','defensive_impact','clutch_performance','floor_general_leadership','shooting_showcase','two_way_player'];\nconst rawAngle = (body.primary_angle || 'breakout_performance').toLowerCase().replace(/[\\s-]/g,'_');\nconst primaryAngle = validAngles.includes(rawAngle) ? rawAngle : 'breakout_performance';\n\nconst rawWC = parseInt(body.word_count) || 350;\nconst wordCount = Math.min(Math.max(rawWC, 80), 800);\n\nconst playerName   = (body.player_name     || '').trim();\nconst position     = (body.position        || '').trim();\nconst team         = (body.team            || '').trim();\nconst ageGrade     = (body.age_grade       || '').trim();\nconst eventName    = (body.event_name      || '').trim();\nconst evalNotes    = (body.evaluator_notes || '').trim();\nconst gameNotes    = (body.game_notes      || '').trim();\nconst teamNotes    = (body.team_notes      || '').trim();\nconst standoutTags = Array.isArray(body.standout_tags) ? body.standout_tags : [];\nconst sliders      = body.sliders && typeof body.sliders === 'object' ? body.sliders : {};\nconst styleSample  = (body.style_sample    || '').trim();\nconst styleSampleUrl = (body.style_sample_url || '').trim();\nconst serpContext = (body.serp_context || body.research_snippets || '').trim();\nconst validSpines = ['stakes','timeline','matchup','identity','legacy','injury_subplot'];\nconst rawSpine = (body.story_spine || 'stakes').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst storySpine = validSpines.includes(rawSpine) ? rawSpine : 'stakes';\nconst momentAnchor1 = (body.moment_anchor_1 || '').trim();\nconst momentAnchor2 = (body.moment_anchor_2 || '').trim();\nconst momentAnchor3 = (body.moment_anchor_3 || '').trim();\nconst statLine = (body.stat_line || '').trim();\nconst verifiedFacts = (body.verified_facts || '').trim();\nconst quote1 = (body.quote_1 || '').trim();\nconst quote2 = (body.quote_2 || '').trim();\nconst quote3 = (body.quote_3 || '').trim();\nconst espnDepthMode = body.espn_depth_mode === true || body.espn_depth_mode === 'true';\nconst clampV = (x) => Math.min(10, Math.max(1, parseInt(x, 10) || 6));\nconst voicePunch = clampV(body.voice_punch);\nconst voiceAnalyticsDensity = clampV(body.voice_analytics_density);\nconst voiceSceneDetail = clampV(body.voice_scene_detail);\nconst validQuickFormats = ['full','recap_short','preview_bullets','social_pack'];\nconst rawQf = (body.quick_format || 'full').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst quickFormat = validQuickFormats.includes(rawQf) ? rawQf : 'full';\nconst templateContract = String(body.template_contract || '').trim();\nconst structuredExtras = String(body.structured_extras || '').trim();\nconst pubName      = (body.publication_name|| 'SportsPilot').trim();\nconst regenerateInstructions = (body.regenerate_instructions || body.user_edit_instructions || body.revision_instructions || '').trim();\nconst sectionRewrite = (body.section_rewrite || '').trim().toLowerCase();\nconst rewriteContent = (body.rewrite_content || '').trim();\n\nconst hasContent = evalNotes.length > 10 || gameNotes.length > 10 || teamNotes.length > 10;\nif (!hasContent) throw new Error('evaluator_notes, game_notes, or team_notes is required');\n\nconst sessionId = 'CAI-' + Date.now() + '-' + Math.random().toString(36).substring(2,8).toUpperCase();\n\nreturn [{\n  json: {\n    sessionId, mode, modeLabel: modeLabels[mode],\n    stylePreset, tone, audience, audienceLabel: audienceLabels[audience],\n    confidence, primaryAngle, wordCount,\n    playerName, position, team, ageGrade, eventName,\n    evalNotes, gameNotes, teamNotes,\n    standoutTags, sliders, styleSample, styleSampleUrl, serpContext, pubName,\n    storySpine, momentAnchor1, momentAnchor2, momentAnchor3,\n    statLine, verifiedFacts, quote1, quote2, quote3,\n    espnDepthMode, voicePunch, voiceAnalyticsDensity, voiceSceneDetail,\n    quickFormat,\n    templateContract, structuredExtras,\n    regenerateInstructions, sectionRewrite, rewriteContent,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst validModes = ['player_article','game_recap','event_standouts','team_story','recruiting_report','recruiting_summary'];\nconst rawMode = (body.mode || 'player_article').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst normalizedMode = rawMode === 'recruiting_summary' ? 'recruiting_report' : rawMode;\nconst mode = validModes.includes(normalizedMode) ? normalizedMode : 'player_article';\nconst modeLabels = {\n  player_article:    'Player Feature Article',\n  game_recap:        'Game Recap',\n  event_standouts:   'Event Standouts',\n  team_story:        'Team Story',\n  recruiting_report: 'Recruiting Report'\n};\n\nconst validPresets = ['Neutral Reporter','Recruiting Analyst','Scouting Breakdown','Event Recap','Player Spotlight','High-Energy Feature','Feature Story','Professional Media','Shortform Social','Development-Focused','Coach/Recruiter Brief'];\nconst rawPreset = (body.style_preset || 'Neutral Reporter').trim();\nconst stylePreset = validPresets.includes(rawPreset) ? rawPreset : 'Neutral Reporter';\n\nconst validTones = ['analytical','narrative','energetic','neutral','technical','inspirational'];\nconst tone = validTones.includes((body.tone||'').toLowerCase()) ? body.tone.toLowerCase() : 'analytical';\n\nconst validAudiences = ['general_public','college_recruiters','coaches','parents_players','media_press','social_media'];\nconst rawAud = (body.audience||'general_public').toLowerCase().replace(/[\\s-]/g,'_');\nconst audience = validAudiences.includes(rawAud) ? rawAud : 'general_public';\nconst audienceLabels = {\n  general_public:   'General Sports Audience',\n  college_recruiters:'College Recruiters',\n  coaches:          'Coaches & Staff',\n  parents_players:  'Parents & Players',\n  media_press:      'Media & Press',\n  social_media:     'Social Media'\n};\n\nconst validConf = ['high','moderate','measured','cautious'];\nconst confidence = validConf.includes((body.confidence||'').toLowerCase()) ? body.confidence.toLowerCase() : 'moderate';\n\nconst validAngles = ['breakout_performance','defensive_impact','clutch_performance','floor_general_leadership','shooting_showcase','two_way_player'];\nconst rawAngle = (body.primary_angle || 'breakout_performance').toLowerCase().replace(/[\\s-]/g,'_');\nconst primaryAngle = validAngles.includes(rawAngle) ? rawAngle : 'breakout_performance';\n\nconst rawWC = parseInt(body.word_count) || 350;\nconst wordCount = Math.min(Math.max(rawWC, 80), 800);\n\nconst playerName   = (body.player_name     || '').trim();\nconst position     = (body.position        || '').trim();\nconst team         = (body.team            || '').trim();\nconst ageGrade     = (body.age_grade       || '').trim();\nconst eventName    = (body.event_name      || '').trim();\nconst evalNotes    = (body.evaluator_notes || '').trim();\nconst gameNotes    = (body.game_notes      || '').trim();\nconst teamNotes    = (body.team_notes      || '').trim();\nconst standoutTags = Array.isArray(body.standout_tags) ? body.standout_tags : [];\nconst sliders      = body.sliders && typeof body.sliders === 'object' ? body.sliders : {};\nconst styleSample  = (body.style_sample    || '').trim();\nconst styleSampleUrl = (body.style_sample_url || '').trim();\nconst serpContext = (body.serp_context || body.research_snippets || '').trim();\nconst validSpines = ['stakes','timeline','matchup','identity','legacy','injury_subplot'];\nconst rawSpine = (body.story_spine || 'stakes').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst storySpine = validSpines.includes(rawSpine) ? rawSpine : 'stakes';\nconst momentAnchor1 = (body.moment_anchor_1 || '').trim();\nconst momentAnchor2 = (body.moment_anchor_2 || '').trim();\nconst momentAnchor3 = (body.moment_anchor_3 || '').trim();\nconst statLine = (body.stat_line || '').trim();\nconst verifiedFacts = (body.verified_facts || '').trim();\nconst quote1 = (body.quote_1 || '').trim();\nconst quote2 = (body.quote_2 || '').trim();\nconst quote3 = (body.quote_3 || '').trim();\nconst espnDepthMode = body.espn_depth_mode === true || body.espn_depth_mode === 'true';\nconst clampV = (x) => Math.min(10, Math.max(1, parseInt(x, 10) || 6));\nconst voicePunch = clampV(body.voice_punch);\nconst voiceAnalyticsDensity = clampV(body.voice_analytics_density);\nconst voiceSceneDetail = clampV(body.voice_scene_detail);\nconst validQuickFormats = ['full','recap_short','preview_bullets','social_pack'];\nconst rawQf = (body.quick_format || 'full').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst quickFormat = validQuickFormats.includes(rawQf) ? rawQf : 'full';\nconst validIntentPresets = ['what_to_watch','injury_impact','coach_brief','fantasy_note','prop_preview'];\nconst rawIntentPreset = (body.intent_preset || 'what_to_watch').trim().toLowerCase().replace(/[\\s-]/g,'_');\nconst intentPreset = validIntentPresets.includes(rawIntentPreset) ? rawIntentPreset : 'what_to_watch';\nconst qualityRules = body.quality_rules && typeof body.quality_rules === 'object'\n  ? body.quality_rules\n  : { bannedPhrases: [], preferredPhrasesByMode: {} };\nconst templateContract = String(body.template_contract || '').trim();\nconst structuredExtras = String(body.structured_extras || '').trim();\nconst promptVersion = String(body.prompt_version || 'cai-prompt-2026.04.16.1').trim() || 'cai-prompt-2026.04.16.1';\nconst contractVersion = String(body.contract_version || 'cai-contract-2026.04.16.1').trim() || 'cai-contract-2026.04.16.1';\nconst pubName      = (body.publication_name|| 'SportsPilot').trim();\nconst regenerateInstructions = (body.regenerate_instructions || body.user_edit_instructions || body.revision_instructions || '').trim();\nconst sectionRewrite = (body.section_rewrite || '').trim().toLowerCase();\nconst rewriteContent = (body.rewrite_content || '').trim();\n\nconst hasContent = evalNotes.length > 10 || gameNotes.length > 10 || teamNotes.length > 10;\nif (!hasContent) throw new Error('evaluator_notes, game_notes, or team_notes is required');\n\nconst sessionId = 'CAI-' + Date.now() + '-' + Math.random().toString(36).substring(2,8).toUpperCase();\nconst runStartedAtMs = Date.now();\n\nreturn [{\n  json: {\n    sessionId, mode, modeLabel: modeLabels[mode],\n    stylePreset, tone, audience, audienceLabel: audienceLabels[audience],\n    confidence, primaryAngle, wordCount,\n    playerName, position, team, ageGrade, eventName,\n    evalNotes, gameNotes, teamNotes,\n    standoutTags, sliders, styleSample, styleSampleUrl, serpContext, pubName,\n    storySpine, momentAnchor1, momentAnchor2, momentAnchor3,\n    statLine, verifiedFacts, quote1, quote2, quote3,\n    espnDepthMode, voicePunch, voiceAnalyticsDensity, voiceSceneDetail,\n    quickFormat,\n    intentPreset, qualityRules,\n    templateContract, structuredExtras,\n    promptVersion, contractVersion, runStartedAtMs,\n    regenerateInstructions, sectionRewrite, rewriteContent,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
-      "id": "d312a316-a72b-49f3-bc0c-8f5f3745ca5b",
+      "id": "fae58db2-7aa8-4fbf-8b59-1f1bfea556b7",
       "name": "Validate & Normalize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        432,
-        384
+        -2272,
+        -400
       ]
     },
     {
@@ -267,13 +267,13 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "15cefac9-f3d8-4c82-b3a7-093a107edc35",
+      "id": "c6feb40d-6a79-4700-ba67-c3e769b95d0f",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        208,
-        384
+        -2496,
+        -400
       ],
       "webhookId": "coverage-assist-webhook",
       "pinData": {
@@ -315,10 +315,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
       "typeVersion": 1,
       "position": [
-        1200,
-        592
+        -1504,
+        -192
       ],
-      "id": "9607d643-a04d-451e-8832-b8ddabfc766e",
+      "id": "4161cd9c-48c9-4fca-8b11-e862905ce0b9",
       "name": "SerpAPI",
       "credentials": {
         "serpApi": {
@@ -334,10 +334,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
       "typeVersion": 1,
       "position": [
-        2000,
-        592
+        -704,
+        -192
       ],
-      "id": "d12f78f5-4dfb-4cbe-be45-1987b3a5fa68",
+      "id": "82e37c7a-0841-47c2-9e64-6a3b32717609",
       "name": "SerpAPI1",
       "credentials": {
         "serpApi": {
@@ -353,10 +353,10 @@
       "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
       "typeVersion": 1,
       "position": [
-        2800,
-        592
+        96,
+        -192
       ],
-      "id": "284b5339-a48d-4a2d-888b-ffd4bdef2b0c",
+      "id": "afc74ecf-a9b3-4988-b470-f4ab1be2ebc4",
       "name": "SerpAPI2",
       "credentials": {
         "serpApi": {
@@ -364,15 +364,719 @@
           "name": "MyFinancialLift"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst now = new Date().toISOString();\nlet qualityRulesJson = '';\ntry {\n  qualityRulesJson = JSON.stringify(d.qualityRules || {}).slice(0, 4000);\n} catch (e) {\n  qualityRulesJson = '';\n}\nreturn [{ json: {\n  ...d,\n  runLogPayload: {\n    log_type: 'run_success',\n    logged_at: now,\n    session_id: d.sessionId || '',\n    mode: d.mode || '',\n    mode_label: d.modeLabel || '',\n    tone: d.tone || '',\n    audience: d.audience || d.audienceLabel || '',\n    confidence: d.confidence || '',\n    prompt_version: d.meta?.prompt_version || d.promptVersion || '',\n    contract_version: d.meta?.contract_version || d.contractVersion || '',\n    pipeline: d.meta?.pipeline || '3-stage',\n    run_duration_ms: d.meta?.run_duration_ms || null,\n    word_count_target: d.meta?.word_count_target || null,\n    word_count_actual: d.meta?.word_count_actual || null,\n    intent_preset: d.intentPreset || '',\n    quick_format: d.quickFormat || '',\n    quality_rules_json: qualityRulesJson,\n    success: d.success === true\n  }\n} }];"
+      },
+      "id": "253482e0-3b03-470d-9a41-ed641f064478",
+      "name": "Build Run Log Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "coverage-assist-feedback",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "12f28218-7807-4819-b1da-dbc3291a1a65",
+      "name": "Feedback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2496,
+        -32
+      ],
+      "webhookId": "coverage-assist-feedback-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst rating = Math.max(1, Math.min(5, parseInt(body.rating, 10) || 0));\nconst payload = {\n  log_type: 'user_feedback',\n  logged_at: new Date().toISOString(),\n  session_id: String(body.session_id || body.sessionId || '').trim(),\n  workflow: String(body.workflow || 'coverage-assist').trim(),\n  mode: String(body.mode || '').trim(),\n  rating: rating || null,\n  feedback: String(body.feedback || body.comment || '').trim(),\n  user: String(body.user || body.email || '').trim(),\n  source: String(body.source || 'portal').trim()\n};\nif (!payload.session_id && !payload.feedback) {\n  throw new Error('feedback payload requires session_id or feedback text');\n}\nreturn [{ json: payload }];"
+      },
+      "id": "6cccf940-cca4-4cc0-b6fc-edd7ffcd25dc",
+      "name": "Normalize Feedback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2272,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, logged: true, session_id: $json.session_id || '' }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3fc7cd00-c637-4fa5-b4eb-02686937939d",
+      "name": "Return Feedback Ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1776,
+        -32
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d0c61511-7883-40ff-afaa-026ee8eb8eca",
+      "name": "Workflow Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2496,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nreturn [{ json: {\n  log_type: 'workflow_error',\n  logged_at: new Date().toISOString(),\n  workflow_name: e.workflow?.name || 'CoverageAssist',\n  execution_id: String(e.execution?.id || ''),\n  last_node: e.execution?.lastNodeExecuted || '',\n  error_message: e.execution?.error?.message || e.error?.message || 'Unknown error',\n  error_stack: e.execution?.error?.stack || '',\n  raw: JSON.stringify(e).slice(0, 7000)\n} }];"
+      },
+      "id": "22403852-08e9-4c8a-a0b1-a6b2e7adfc57",
+      "name": "Build Error Log Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2272,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8",
+          "mode": "list",
+          "cachedResultName": "CoverageAssist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feedback logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "logged_at": "={{ $json.logged_at }}",
+            "log_type": "={{ $json.log_type }}",
+            "session_id": "={{ $json.session_id }}",
+            "workflow": "={{ $json.workflow }}",
+            "mode": "={{ $json.mode }}",
+            "rating": "={{ $json.rating }}",
+            "feedback": "={{ $json.feedback }}",
+            "user": "={{ $json.user }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "log_type",
+              "displayName": "log_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rating",
+              "displayName": "rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "feedback",
+              "displayName": "feedback",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2032,
+        -32
+      ],
+      "id": "44c238a2-62a7-4792-a5a9-0861ff61b407",
+      "name": "Update feedback log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ue0hso1OwmjjiLle",
+          "name": "SportsPilot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8",
+          "mode": "list",
+          "cachedResultName": "CoverageAssist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1835820336,
+          "mode": "list",
+          "cachedResultName": "Run logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit#gid=1835820336"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "logged_at": "={{$now}}",
+            "log_type": "={{ $json.log_type }}",
+            "workflow_name": "={{ $json.workflow_name }}",
+            "execution_id": "={{ $json.execution_id }}",
+            "last_node": "={{ $json.last_node }}",
+            "error_message": "={{ $json.error_message }}",
+            "error_stack": "={{ $json.error_stack }}",
+            "raw": "={{ $json.raw }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "log_type",
+              "displayName": "log_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow_name",
+              "displayName": "workflow_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_node",
+              "displayName": "last_node",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error_stack",
+              "displayName": "error_stack",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "raw",
+              "displayName": "raw",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2032,
+        208
+      ],
+      "id": "aec34c80-a5e8-4ed7-83b6-21f95cd44eda",
+      "name": "Update error log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ue0hso1OwmjjiLle",
+          "name": "SportsPilot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8",
+          "mode": "list",
+          "cachedResultName": "CoverageAssist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1761916695,
+          "mode": "list",
+          "cachedResultName": "Run logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UwG6ylJ8eQv_TY-p3ciY1QsDnUHGdfMSje1Du5lqpZ8/edit#gid=1761916695"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "log_type": "={{ $json.runLogPayload.log_type }}",
+            "logged_at": "={{ $json.runLogPayload.logged_at }}",
+            "session_id": "={{ $json.runLogPayload.session_id }}",
+            "mode": "={{ $json.runLogPayload.mode }}",
+            "mode_label": "={{ $json.runLogPayload.mode_label }}",
+            "tone": "={{ $json.runLogPayload.tone }}",
+            "audience": "={{ $json.runLogPayload.audience }}",
+            "confidence": "={{ $json.runLogPayload.confidence }}",
+            "prompt_version": "={{ $json.runLogPayload.prompt_version }}",
+            "contract_version": "={{ $json.runLogPayload.contract_version }}",
+            "pipeline": "={{ $json.runLogPayload.pipeline }}",
+            "run_duration_ms": "={{ $json.runLogPayload.run_duration_ms }}",
+            "word_count_target": "={{ $json.runLogPayload.word_count_target }}",
+            "word_count_actual": "={{ $json.runLogPayload.word_count_actual }}",
+            "intent_preset": "={{ $json.runLogPayload.intent_preset }}",
+            "quick_format": "={{ $json.runLogPayload.quick_format }}",
+            "quality_rules_json": "={{ $json.runLogPayload.quality_rules_json }}",
+            "success": "={{ $json.runLogPayload.success }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "log_type",
+              "displayName": "log_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "logged_at",
+              "displayName": "logged_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mode_label",
+              "displayName": "mode_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tone",
+              "displayName": "tone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "audience",
+              "displayName": "audience",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confidence",
+              "displayName": "confidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "prompt_version",
+              "displayName": "prompt_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "contract_version",
+              "displayName": "contract_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pipeline",
+              "displayName": "pipeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "run_duration_ms",
+              "displayName": "run_duration_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "word_count_target",
+              "displayName": "word_count_target",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "word_count_actual",
+              "displayName": "word_count_actual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "intent_preset",
+              "displayName": "intent_preset",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quick_format",
+              "displayName": "quick_format",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "quality_rules_json",
+              "displayName": "quality_rules_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "success",
+              "displayName": "success",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1056,
+        -224
+      ],
+      "id": "71a7c325-615b-45e9-ac78-5a1b6200ae4d",
+      "name": "Update run log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ue0hso1OwmjjiLle",
+          "name": "SportsPilot"
+        }
+      }
     }
   ],
-  "pinData": {},
+  "pinData": {
+    "Feedback Webhook": [
+      {
+        "json": {
+          "session_id": "CAI-20260417-EF34GH",
+          "workflow": "coverage-assist",
+          "mode": "team_story",
+          "rating": 5,
+          "feedback": "Social pack output was clean and usable.",
+          "user": "coach-demo@sportspilotai.com",
+          "source": "workspace"
+        }
+      }
+    ],
+    "Webhook Trigger": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n-production-bba0.up.railway.app",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+            "content-length": "3744",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate, br, zstd",
+            "accept-language": "en-US,en;q=0.9",
+            "content-type": "application/json",
+            "origin": "http://localhost:3000",
+            "priority": "u=1, i",
+            "referer": "http://localhost:3000/",
+            "sec-ch-ua": "\"Google Chrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "cross-site",
+            "x-forwarded-for": "49.147.54.9, 157.52.99.29",
+            "x-forwarded-host": "n8n-production-bba0.up.railway.app",
+            "x-forwarded-proto": "https",
+            "x-railway-edge": "railway/asia-southeast1-eqsg3a",
+            "x-railway-request-id": "abr0LKpKQ2GG3-OO0ubPiw",
+            "x-real-ip": "49.147.54.9",
+            "x-request-start": "1776435383899"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "mode": "player_article",
+            "player_name": "Ethan Cole",
+            "position": "Guard",
+            "team": "Marquette Golden Eagles",
+            "age_grade": "Junior (draft-eligible)",
+            "event_name": "NCAA Tournament — April 2026 (Sweet 16 week · live bracket context)",
+            "publication_name": "SportsPilot Scout Report",
+            "evaluator_notes": "Cole ran the offense like a coach on the floor in a high-leverage NCAA Tournament game, controlling tempo with drag screens and early-clock hit-ahead passing. He finished with 22 points, 7 assists, and 5 rebounds while generating clean looks out of spread ball screens and middle pick-and-roll. In the second half, he repeatedly attacked switches, forced late help, and kicked to the weak side for rhythm threes. Defensively, his communication on ball-screen coverage kept younger lineups organized and limited back-door cuts. Areas to monitor: live-ball turnovers when defenses trap at the level and finishing through contact vs. long athletes.",
+            "game_notes": "",
+            "team_notes": "",
+            "standout_tags": [
+              "Tournament Poise",
+              "Half-Court Control",
+              "Late-Clock Creation",
+              "Defensive Communication"
+            ],
+            "sliders": {
+              "athleticism": 8,
+              "skill_level": 10,
+              "basketball_iq": 10,
+              "coachability": 10,
+              "competitive_drive": 10,
+              "upside": 8
+            },
+            "style_preset": "Professional Media",
+            "primary_angle": "floor_general_leadership",
+            "tone": "analytical",
+            "audience": "media_press",
+            "confidence": "high",
+            "word_count": 750,
+            "style_sample": "Cole plays the game one tempo ahead of the defense: a shoulder sell on the drag, eyes on the low tag, then a live-dribble skip that hits the weak side before the closeout can load. It is not flash — it is shot-clock math.",
+            "style_sample_url": "",
+            "serp_context": "Real-time context (April 2026 — NCAA calendar):\n- NCAA Division I men's tournament is in the Sweet 16 / Elite Eight / Final Four window (early April).\n- Bracket volatility and seeding narratives update nightly; verify opponent and round against the official bracket.\n- Post-Final Four (mid-April): NBA early-entry / withdrawal deadline and transfer-portal headlines spike.\n- Use evaluator notes + verified facts as ground truth; treat web snippets as external context only.\nSource checkpoints:\n- NCAA.com March Madness bracket / schedule\n- NCAA NET rankings and team sheets (team pages)\n- Conference / school athletics sites for official box scores",
+            "story_spine": "stakes",
+            "moment_anchor_1": "2H ~3:40 — Cole rejects a flat show, snakes middle, low man tags early; kick-out corner three in rhythm.",
+            "moment_anchor_2": "Under-4 offense — drag screen into empty corner; extra pass skips the low tag for a weak-side three.",
+            "moment_anchor_3": "Late possession — vocal switch call on a stagger; helpside stays home and erases a back-cut layup.",
+            "stat_line": "22 PTS, 7 AST, 5 REB — illustrative line tied to evaluator notes; verify against official NCAA box score before publishing.",
+            "verified_facts": "- April 2026 NCAA Division I men's tournament window (Sweet 16 / Elite Eight / Final Four on the calendar).\n- Cole is the primary half-court initiator in late-clock and ATO situations when on the floor.",
+            "structured_extras": "",
+            "template_contract": "Player Article\nScale each section to the target word count; avoid padding beyond evaluator notes and verified facts.\n1. Lede (~15–20%) — hook on primary angle; name player/team context from notes only.\n2. Body (~45–55%) —2–4 paragraphs of evidence from sliders + eval notes; at least one block anchored to Moment 1.\n3. Trajectory / fit (~15–25%) — upside, role, coachability; no new claims.\n4. Close (~10%) — one forward-looking line tied to notes.",
+            "prompt_version": "cai-prompt-2026.04.16.1",
+            "contract_version": "cai-contract-2026.04.16.1",
+            "quote_1": "",
+            "quote_2": "",
+            "quote_3": "",
+            "espn_depth_mode": true,
+            "voice_punch": 7,
+            "voice_analytics_density": 7,
+            "voice_scene_detail": 6,
+            "quick_format": "full"
+          },
+          "webhookUrl": "https://n8n-production-bba0.up.railway.app/webhook/coverage-assist",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
   "connections": {
     "Assemble Full Article": {
       "main": [
         [
           {
             "node": "Return to Portal",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Run Log Payload",
             "type": "main",
             "index": 0
           }
@@ -543,13 +1247,79 @@
           }
         ]
       ]
+    },
+    "Build Run Log Payload": {
+      "main": [
+        [
+          {
+            "node": "Update run log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Feedback": {
+      "main": [
+        [
+          {
+            "node": "Update feedback log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Error Log Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Log Payload": {
+      "main": [
+        [
+          {
+            "node": "Update error log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update feedback log": {
+      "main": [
+        [
+          {
+            "node": "Return Feedback Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f122de86-7704-4922-910a-f4db88f718d2",
+  "versionId": "cc22a72c-9358-4885-b77d-f9b37d97ee40",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "d65af402cf4618f1686cfbe2122be5f50c690cd4a445a551ee33fc92dd1f710d"

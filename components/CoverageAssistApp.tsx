@@ -17,8 +17,15 @@ import {
   QUICK_FORMAT_OPTIONS,
   STORY_SPINE_OPTIONS,
   STYLE_PRESETS,
+  INTENT_PRESET_OPTIONS,
+  INTENT_PRESETS,
+  PREFLIGHT_FIELD_LABELS,
+  QUALITY_RULES,
+  COVERAGE_CONTRACT_VERSION,
+  COVERAGE_PROMPT_VERSION,
   formatModeTemplateContract,
   type ArticleMode,
+  type IntentPresetId,
   type QuickFormatId,
   type StorySpineId,
 } from "@/lib/coverageAssistConstants";
@@ -29,11 +36,13 @@ import {
 import { downloadArticleAsPdf } from "@/lib/downloadArticlePdf";
 import {
   callN8nWebhook,
+  submitFeedback,
   structuredArticleToString,
   type WebhookPayload,
 } from "@/lib/webhook";
 
 type LastArticle = {
+  sessionId?: string;
   article?: string;
   headline?: string;
   mode?: string;
@@ -127,6 +136,7 @@ export function CoverageAssistApp() {
   const [voicePunch, setVoicePunch] = useState(6);
   const [voiceAnalytics, setVoiceAnalytics] = useState(6);
   const [voiceScene, setVoiceScene] = useState(6);
+  const [intentPreset, setIntentPreset] = useState<IntentPresetId>("what_to_watch");
   const [quickFormat, setQuickFormat] = useState<QuickFormatId>("full");
   const [stylePaste, setStylePaste] = useState("");
 
@@ -189,6 +199,9 @@ export function CoverageAssistApp() {
   const [copyBtnLabel, setCopyBtnLabel] = useState("📋 Copy");
   const [generating, setGenerating] = useState(false);
   const [regenerateInstructions, setRegenerateInstructions] = useState("");
+  const [feedbackRating, setFeedbackRating] = useState<number>(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [activeHistoryTemplateId, setActiveHistoryTemplateId] = useState<
     string | null
   >(null);
@@ -321,6 +334,8 @@ export function CoverageAssistApp() {
         verified_facts: verifiedFacts.trim(),
         structured_extras: structuredExtras.trim(),
         template_contract: formatModeTemplateContract(mode),
+        prompt_version: COVERAGE_PROMPT_VERSION,
+        contract_version: COVERAGE_CONTRACT_VERSION,
         quote_1: quote1.trim(),
         quote_2: quote2.trim(),
         quote_3: quote3.trim(),
@@ -328,6 +343,8 @@ export function CoverageAssistApp() {
         voice_punch: voicePunch,
         voice_analytics_density: voiceAnalytics,
         voice_scene_detail: voiceScene,
+        intent_preset: intentPreset,
+        quality_rules: QUALITY_RULES,
         quick_format: quickFormat,
         ...override,
       };
@@ -368,9 +385,61 @@ export function CoverageAssistApp() {
       voicePunch,
       voiceAnalytics,
       voiceScene,
+      intentPreset,
       quickFormat,
     ]
   );
+
+  const applyIntentPreset = (id: IntentPresetId) => {
+    setIntentPreset(id);
+    const preset = INTENT_PRESETS[id];
+    setPrimaryAngle(preset.defaultPrimaryAngle);
+    setTone(preset.defaultTone);
+    setAudience(preset.defaultAudience);
+  };
+
+  const getPreflightMissingFields = useCallback((): string[] => {
+    const required = INTENT_PRESETS[intentPreset].requiredFields;
+    const missing: string[] = [];
+    required.forEach((field) => {
+      if (field === "notes_any") {
+        if (!evalNotes.trim() && !gameNotes.trim() && !teamNotes.trim()) {
+          missing.push(PREFLIGHT_FIELD_LABELS[field]);
+        }
+        return;
+      }
+      if (field === "player_name" && !playerName.trim()) {
+        missing.push(PREFLIGHT_FIELD_LABELS[field]);
+        return;
+      }
+      if (field === "team" && !team.trim()) {
+        missing.push(PREFLIGHT_FIELD_LABELS[field]);
+        return;
+      }
+      if (field === "event_name" && !eventName.trim()) {
+        missing.push(PREFLIGHT_FIELD_LABELS[field]);
+        return;
+      }
+      if (field === "moment_anchor_1" && !momentAnchor1.trim()) {
+        missing.push(PREFLIGHT_FIELD_LABELS[field]);
+        return;
+      }
+      if (field === "stat_line" && !statLine.trim()) {
+        missing.push(PREFLIGHT_FIELD_LABELS[field]);
+      }
+    });
+    return missing;
+  }, [
+    intentPreset,
+    evalNotes,
+    gameNotes,
+    teamNotes,
+    playerName,
+    team,
+    eventName,
+    momentAnchor1,
+    statLine,
+  ]);
 
   const applyQuickFormat = (id: QuickFormatId) => {
     setQuickFormat(id);
@@ -582,11 +651,9 @@ export function CoverageAssistApp() {
   };
 
   const generate = async () => {
-    const notes = evalNotes.trim();
-    const gNotes = gameNotes.trim();
-    const tNotes = teamNotes.trim();
-    if (!notes && !gNotes && !tNotes) {
-      setLeftNotice("Add evaluator notes before generating.");
+    const missing = getPreflightMissingFields();
+    if (missing.length) {
+      setLeftNotice(`Missing required fields: ${missing.join(", ")}`);
       setTimeout(() => setLeftNotice(""), 5000);
       return;
     }
@@ -782,6 +849,41 @@ export function CoverageAssistApp() {
     URL.revokeObjectURL(url);
   };
 
+  const sendFeedback = async () => {
+    if (!lastArticle) {
+      setLeftNotice("Generate an article first before sending feedback.");
+      setTimeout(() => setLeftNotice(""), 5000);
+      return;
+    }
+    const comment = feedbackComment.trim();
+    if (!feedbackRating && !comment) {
+      setLeftNotice("Add a rating or feedback comment before submitting.");
+      setTimeout(() => setLeftNotice(""), 5000);
+      return;
+    }
+    setFeedbackSubmitting(true);
+    try {
+      await submitFeedback({
+        session_id: lastArticle.sessionId,
+        mode: lastArticle.mode || mode,
+        rating: feedbackRating || undefined,
+        feedback: comment || undefined,
+        source: "coverageassist-app",
+        workflow: "coverage-assist",
+      });
+      setFeedbackComment("");
+      setFeedbackRating(0);
+      setLeftNotice("✅ Feedback sent");
+      setTimeout(() => setLeftNotice(""), 4000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLeftNotice(`⚠ Feedback failed: ${msg}`);
+      setTimeout(() => setLeftNotice(""), 8000);
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
   const downloadPDF = async () => {
     if (!lastArticle) return;
     const raw = articleToString(lastArticle.article).trim();
@@ -805,30 +907,29 @@ export function CoverageAssistApp() {
   };
 
   useEffect(() => {
-    setPlayerName("LeBron James");
-    setPosition("Forward");
-    setTeam("Los Angeles Lakers");
-    setAgeGrade("NBA Veteran / Age 41");
+    setPlayerName("Ethan Cole");
+    setPosition("Guard");
+    setTeam("Marquette Golden Eagles");
+    setAgeGrade("Junior (draft-eligible)");
     setEventName(
-      "April 2026 NBA Playoff Push — Western Conference Race"
+      "NCAA Tournament — April 2026 (Sweet 16 week · live bracket context)"
     );
     setPublicationName("SportsPilot Scout Report");
     setEvalNotes(
-      "LeBron delivered another high-leverage performance as the playoff race tightened, " +
-        "controlling tempo with deep-post orchestration and early-clock hit-ahead passing. " +
-        "He finished with 30 points, 11 assists, and 8 rebounds while generating quality looks " +
-        "for shooters out of spread pick-and-roll and elbow actions. In the fourth quarter, " +
-        "he repeatedly hunted favorable matchups, forcing late help and creating corner threes " +
-        "or paint touches on consecutive possessions. Beyond the box score, his communication " +
-        "on defensive switches settled younger lineups and reduced transition breakdowns. " +
-        "Areas to monitor: preserving burst across heavy minute loads and limiting live-ball " +
-        "turnovers when defenses load two to the ball."
+      "Cole ran the offense like a coach on the floor in a high-leverage NCAA Tournament game, " +
+        "controlling tempo with drag screens and early-clock hit-ahead passing. He finished with " +
+        "22 points, 7 assists, and 5 rebounds while generating clean looks out of spread ball screens " +
+        "and middle pick-and-roll. In the second half, he repeatedly attacked switches, forced late " +
+        "help, and kicked to the weak side for rhythm threes. Defensively, his communication on " +
+        "ball-screen coverage kept younger lineups organized and limited back-door cuts. " +
+        "Areas to monitor: live-ball turnovers when defenses trap at the level and finishing " +
+        "through contact vs. long athletes."
     );
     setTags([
-      "Playoff Poise",
+      "Tournament Poise",
       "Half-Court Control",
-      "Late-Game Shot Creation",
-      "Leadership",
+      "Late-Clock Creation",
+      "Defensive Communication",
     ]);
     setSliders({
       athleticism: 8,
@@ -846,20 +947,20 @@ export function CoverageAssistApp() {
     setStorySpine("stakes");
     setEspnDepthMode(true);
     setMomentAnchor1(
-      "Q4 ~2:10 — LeBron touches the post vs a switch, baseline help commits, kick-out corner three created."
+      "2H ~3:40 — Cole rejects a flat show, snakes middle, low man tags early; kick-out corner three in rhythm."
     );
     setMomentAnchor2(
-      "Two-minute offense — hit-ahead pass collapses the defense; extra pass to a wide-open weak-side shooter."
+      "Under-4 offense — drag screen into empty corner; extra pass skips the low tag for a weak-side three."
     );
     setMomentAnchor3(
-      "Late switch communication — vocal coverage call prevents a back-cut layup in transition."
+      "Late possession — vocal switch call on a stagger; helpside stays home and erases a back-cut layup."
     );
     setStatLine(
-      "30 PTS (approx.), 11 AST, 8 REB — illustrative line tied to evaluator notes; verify against official box score before publishing."
+      "22 PTS, 7 AST, 5 REB — illustrative line tied to evaluator notes; verify against official NCAA box score before publishing."
     );
     setVerifiedFacts(
-      "- Western Conference playoff / play-in race context (late regular season).\n" +
-        "- LeBron remains a primary half-court decision-maker in closing minutes when available."
+      "- April 2026 NCAA Division I men's tournament window (Sweet 16 / Elite Eight / Final Four on the calendar).\n" +
+        "- Cole is the primary half-court initiator in late-clock and ATO situations when on the floor."
     );
     setQuote1("");
     setQuote2("");
@@ -868,24 +969,24 @@ export function CoverageAssistApp() {
     setVoiceAnalytics(7);
     setVoiceScene(6);
     const paste =
-      "In year twenty-plus, LeBron still manipulates a defense like a chess player on a fast clock: " +
-      "one look-off to move the low man, one shoulder turn to freeze the nail defender, then a pass " +
-      "that arrives before the help rotation has even decided who it belongs to.";
+      "Cole plays the game one tempo ahead of the defense: a shoulder sell on the drag, eyes on the " +
+      "low tag, then a live-dribble skip that hits the weak side before the closeout can load. It is " +
+      "not flash — it is shot-clock math.";
     setStylePaste(paste);
     setStyleSample(paste);
     setSerpQuery(
-      "LeBron James April 2026 Lakers playoff push Western Conference standings"
+      "Marquette Golden Eagles NCAA Tournament April 2026 bracket NET rankings Big East"
     );
     setSerpContext(
-      "Validation notes (April 2026):\n" +
-        "- Lakers remained in a tight Western Conference playoff / play-in race entering the final week.\n" +
-        "- LeBron James stayed central to late-season offensive creation and closing-lineup minutes.\n" +
-        "- Western seeding volatility made nightly results highly consequential.\n" +
-        "- Regular season endpoint around April 12; play-in starts around April 14; playoffs around April 18.\n" +
-        "Source checkpoints:\n" +
-        "- NBA.com playoff picture / standings updates\n" +
-        "- Yahoo Sports April 5, 2026 playoff-picture report\n" +
-        "- CBS Sports April 2026 playoff-picture tracker"
+      "Real-time context (April 2026 — NCAA calendar):\n" +
+        "- NCAA Division I men's tournament is in the Sweet 16 / Elite Eight / Final Four window (early April).\n" +
+        "- Bracket volatility and seeding narratives update nightly; verify opponent and round against the official bracket.\n" +
+        "- Post-Final Four (mid-April): NBA early-entry / withdrawal deadline and transfer-portal headlines spike.\n" +
+        "- Use evaluator notes + verified facts as ground truth; treat web snippets as external context only.\n" +
+      "Source checkpoints:\n" +
+        "- NCAA.com March Madness bracket / schedule\n" +
+        "- NCAA NET rankings and team sheets (team pages)\n" +
+        "- Conference / school athletics sites for official box scores"
     );
   }, []);
 
@@ -1471,6 +1572,23 @@ export function CoverageAssistApp() {
               <span className="article-meta-chip" id="toolbarAudience">
                 {AUD_LABELS[audience] || audience}
               </span>
+              {lastArticle?.sessionId ? (
+                <button
+                  type="button"
+                  className="toolbar-btn compact"
+                  title={lastArticle.sessionId}
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(lastArticle.sessionId!)
+                      .then(() => {
+                        setLeftNotice("Session ID copied — use for logs & feedback");
+                        setTimeout(() => setLeftNotice(""), 4000);
+                      });
+                  }}
+                >
+                  📎 Session ID
+                </button>
+              ) : null}
             </div>
             <div className="article-toolbar-right">
               {lastArticle ? (
@@ -1675,6 +1793,19 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
+            <div className="panel-label">Intent Preset</div>
+            <div className="chip-row" style={{ flexWrap: "wrap", marginBottom: 10 }}>
+              {INTENT_PRESET_OPTIONS.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`chip ${intentPreset === id ? "active" : ""}`}
+                  onClick={() => applyIntentPreset(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="panel-label">Primary Angle</div>
             <div className="chip-row" id="angleChips">
               {(
@@ -2200,6 +2331,52 @@ export function CoverageAssistApp() {
               }}
             >
               🔁 Regenerate Article
+            </button>
+          </div>
+
+          <div
+            className="right-section"
+            style={{ display: lastArticle ? undefined : "none" }}
+          >
+            <div className="panel-label">Feedback (QA)</div>
+            <div className="field" style={{ marginBottom: 8 }}>
+              <label>Rating</label>
+              <div className="chip-row">
+                {[1, 2, 3, 4, 5].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`chip ${feedbackRating === r ? "active" : ""}`}
+                    onClick={() =>
+                      setFeedbackRating((prev) => (prev === r ? 0 : r))
+                    }
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field" style={{ marginBottom: 8 }}>
+              <label>Comment</label>
+              <textarea
+                rows={2}
+                placeholder="What should improve in this output?"
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="rewrite-btn"
+              onClick={() => void sendFeedback()}
+              disabled={feedbackSubmitting}
+              style={{
+                justifyContent: "center",
+                fontWeight: 700,
+                opacity: feedbackSubmitting ? 0.6 : 1,
+              }}
+            >
+              {feedbackSubmitting ? "Sending..." : "Send feedback"}
             </button>
           </div>
         </div>

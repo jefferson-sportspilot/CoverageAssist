@@ -1,0 +1,75 @@
+[
+  {
+    "name": "player-full",
+    "body": {
+      "mode": "player_article",
+      "style_preset": "Professional Media",
+      "primary_angle": "floor_general_leadership",
+      "tone": "analytical",
+      "audience": "media_press",
+      "confidence": "high",
+      "word_count": 640,
+      "quick_format": "full",
+      "player_name": "Morgan Chen",
+      "position": "Guard",
+      "team": "Northside HS",
+      "age_grade": "Junior",
+      "event_name": "Northside vs Riverside",
+      "publication_name": "SportsPilot Scout Report",
+      "evaluator_notes": "Calm pace-setter. Strong closeouts and communication.",
+      "game_notes": "Northside won 58-52.",
+      "team_notes": "",
+      "standout_tags": ["Poise", "Defensive IQ"],
+      "sliders": {
+        "athleticism": 7,
+        "skill_level": 8,
+        "basketball_iq": 9
+      },
+      "story_spine": "stakes",
+      "moment_anchor_1": "Q2 steal to corner 3",
+      "moment_anchor_2": "Q4 stop with no foul",
+      "moment_anchor_3": "Late offensive board chain",
+      "stat_line": "17 PTS, 6 AST, 4 REB",
+      "verified_facts": "Northside 14-4 league",
+      "structured_extras": "Final 58-52",
+      "template_contract": "Player Article contract lines",
+      "prompt_version": "fixture-prompt-v1",
+      "contract_version": "fixture-contract-v1"
+    }
+  },
+  {
+    "name": "team-social-pack",
+    "body": {
+      "mode": "team_story",
+      "style_preset": "Shortform Social",
+      "primary_angle": "defensive_impact",
+      "tone": "energetic",
+      "audience": "social_media",
+      "confidence": "moderate",
+      "word_count": 280,
+      "quick_format": "social_pack",
+      "team": "Westbrook",
+      "event_name": "at Lakeside",
+      "publication_name": "SportsPilot Scout Report",
+      "team_notes": "Defense-first identity.",
+      "game_notes": "Westbrook won 49-44.",
+      "evaluator_notes": "Bench steadied fourth quarter.",
+      "standout_tags": ["Defense", "Bench"],
+      "sliders": {
+        "team_cohesion": 8,
+        "execution": 7,
+        "competitive_level": 8
+      },
+      "story_spine": "identity",
+      "moment_anchor_1": "Road defense set tone",
+      "moment_anchor_2": "Bench preserved lead",
+      "moment_anchor_3": "9-2 closing run",
+      "stat_line": "49-44",
+      "verified_facts": "Road win",
+      "structured_extras": "Final 49-44",
+      "template_contract": "Team Story contract lines",
+      "prompt_version": "fixture-prompt-v2",
+      "contract_version": "fixture-contract-v2"
+    }
+  }
+]

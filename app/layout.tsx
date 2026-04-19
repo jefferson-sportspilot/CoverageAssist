@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
   title: "CoverageAssistAI — Evaluation-to-Article Engine",
   description:
     "SportsPilotAI Suite — turn evaluator notes into articles via n8n webhook.",

@@ -1,5 +1,7 @@
 const DEFAULT_WEBHOOK =
   "https://n8n-production-bba0.up.railway.app/webhook/coverage-assist";
+const DEFAULT_FEEDBACK_WEBHOOK =
+  "https://n8n-production-bba0.up.railway.app/webhook/coverage-assist-feedback";
 
 export function getWebhookUrl(): string {
   return (
@@ -7,9 +9,17 @@ export function getWebhookUrl(): string {
   );
 }
 
+export function getFeedbackWebhookUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_FEEDBACK_WEBHOOK_URL?.trim() ||
+    DEFAULT_FEEDBACK_WEBHOOK
+  );
+}
+
 export type WebhookPayload = Record<string, unknown>;
 
 export type NormalizedArticleResponse = {
+  sessionId?: string;
   article: string;
   headline?: string;
   mode?: string;
@@ -19,6 +29,19 @@ export type NormalizedArticleResponse = {
   generatedAt?: string;
   hasStyleSample?: boolean;
   modeLabel?: string;
+};
+
+export type FeedbackPayload = {
+  session_id?: string;
+  sessionId?: string;
+  mode?: string;
+  rating?: number;
+  feedback?: string;
+  comment?: string;
+  user?: string;
+  email?: string;
+  source?: string;
+  workflow?: string;
 };
 
 /**
@@ -112,6 +135,9 @@ export function normalizeN8nResult(
     (typeof raw.stylePreset === "string" ? raw.stylePreset : undefined);
 
   return {
+    sessionId:
+      (typeof raw.sessionId === "string" ? raw.sessionId : undefined) ||
+      (typeof raw.session_id === "string" ? raw.session_id : undefined),
     article: articleStr,
     headline,
     mode: typeof raw.mode === "string" ? raw.mode : undefined,
@@ -140,4 +166,18 @@ export async function callN8nWebhook(
   const rawJson: unknown = await res.json();
   const raw = unwrapResponse(rawJson);
   return normalizeN8nResult(raw);
+}
+
+export async function submitFeedback(
+  payload: FeedbackPayload
+): Promise<void> {
+  const url = getFeedbackWebhookUrl();
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    throw new Error(`Feedback webhook error ${res.status}`);
+  }
 }

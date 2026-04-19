@@ -121,6 +121,109 @@ export const QUICK_FORMAT_OPTIONS = [
 
 export type QuickFormatId = (typeof QUICK_FORMAT_OPTIONS)[number][0];
 
+export type IntentPresetId =
+  | "what_to_watch"
+  | "injury_impact"
+  | "coach_brief"
+  | "fantasy_note"
+  | "prop_preview";
+
+export const INTENT_PRESET_OPTIONS = [
+  ["what_to_watch", "What to watch"],
+  ["injury_impact", "Injury impact"],
+  ["coach_brief", "Coach brief"],
+  ["fantasy_note", "Fantasy note"],
+  ["prop_preview", "Prop preview"],
+] as const;
+
+type PreflightFieldKey =
+  | "notes_any"
+  | "player_name"
+  | "team"
+  | "event_name"
+  | "moment_anchor_1"
+  | "stat_line";
+
+export const QUALITY_RULES = {
+  bannedPhrases: [
+    "can't be stopped",
+    "guaranteed",
+    "sure thing",
+    "destined for stardom",
+  ],
+  preferredPhrasesByMode: {
+    player_article: [
+      "showed flashes",
+      "projectable in",
+      "improving in live reps",
+    ],
+    game_recap: ["swung momentum", "key stretch", "closing sequence"],
+    event_standouts: ["stood out in", "consistent reps", "evaluated live"],
+    team_story: ["identity showed in", "collective execution", "rotation depth"],
+    recruiting_report: ["development runway", "role projection", "fit at the next level"],
+  } satisfies Record<ArticleMode, string[]>,
+} as const;
+
+export const INTENT_PRESETS: Record<
+  IntentPresetId,
+  {
+    label: string;
+    defaultPrimaryAngle: string;
+    defaultTone: string;
+    defaultAudience: string;
+    requiredFields: PreflightFieldKey[];
+  }
+> = {
+  what_to_watch: {
+    label: "What to watch",
+    defaultPrimaryAngle: "breakout_performance",
+    defaultTone: "analytical",
+    defaultAudience: "general_public",
+    requiredFields: ["notes_any", "team", "moment_anchor_1"],
+  },
+  injury_impact: {
+    label: "Injury impact",
+    defaultPrimaryAngle: "defensive_impact",
+    defaultTone: "neutral",
+    defaultAudience: "coaches",
+    requiredFields: ["notes_any", "team", "moment_anchor_1"],
+  },
+  coach_brief: {
+    label: "Coach brief",
+    defaultPrimaryAngle: "floor_general_leadership",
+    defaultTone: "technical",
+    defaultAudience: "coaches",
+    requiredFields: ["notes_any", "player_name", "team"],
+  },
+  fantasy_note: {
+    label: "Fantasy note",
+    defaultPrimaryAngle: "clutch_performance",
+    defaultTone: "analytical",
+    defaultAudience: "social_media",
+    requiredFields: ["notes_any", "player_name", "stat_line"],
+  },
+  prop_preview: {
+    label: "Prop preview",
+    defaultPrimaryAngle: "shooting_showcase",
+    defaultTone: "neutral",
+    defaultAudience: "media_press",
+    requiredFields: ["notes_any", "player_name", "stat_line"],
+  },
+};
+
+export const PREFLIGHT_FIELD_LABELS: Record<PreflightFieldKey, string> = {
+  notes_any: "Evaluator/Game/Team notes",
+  player_name: "Player name",
+  team: "Team",
+  event_name: "Event name",
+  moment_anchor_1: "Moment anchor 1",
+  stat_line: "Stat line",
+};
+
+/** Prompt/contract versions tracked in payload + workflow run logs. */
+export const COVERAGE_PROMPT_VERSION = "cai-prompt-2026.04.16.1";
+export const COVERAGE_CONTRACT_VERSION = "cai-contract-2026.04.16.1";
+
 /**
  * Per-mode "template contract" for n8n: section order + rough word-share guidance.
  * Scales with the user's target word count; not a second CMS.
