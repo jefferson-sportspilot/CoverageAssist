@@ -5,14 +5,14 @@
   --surface3: #eef1f7;
   --border: #e2e8f0;
   --border2: #cbd5e1;
-  --accent: #1d4ed8;
-  --accent2: #ea580c;
-  --accent3: #0891b2;
+  --accent: #2f8f43;
+  --accent2: #2f8f43;
+  --accent3: #2f8f43;
   --text: #0f172a;
   --text2: #475569;
   --text3: #94a3b8;
   --red: #dc2626;
-  --green: #16a34a;
+  --green: #2f8f43;
   --panel-l: 270px;
   --panel-r: 290px;
   --header-h: 58px;
@@ -160,7 +160,7 @@ body {
 }
 .mode-select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
+  box-shadow: 0 0 0 2px rgba(182, 229, 29, 0.2);
 }
 .mode-tab {
   padding: 6px 14px;
@@ -183,7 +183,7 @@ body {
 }
 .mode-tab.active {
   background: var(--accent);
-  color: #fff;
+  color: #152106;
 }
 .topbar-actions {
   display: flex;
@@ -208,7 +208,7 @@ body {
 }
 .topbar-back-btn:hover {
   border-color: var(--accent);
-  background: rgba(29, 78, 216, 0.06);
+  background: rgba(182, 229, 29, 0.12);
 }
 
 .panel-drawer-header {
@@ -291,7 +291,7 @@ body {
 .topbar-pill.live {
   border-color: var(--green);
   color: var(--green);
-  background: rgba(22, 163, 74, 0.06);
+  background: rgba(132, 199, 27, 0.12);
 }
 
 /* ══ THREE-PANEL LAYOUT ══ */
@@ -350,7 +350,7 @@ body.panel-resizing {
 .panel-resize-handle:active::after {
   background: var(--accent);
   width: 2px;
-  box-shadow: 0 0 0 1px rgba(29, 78, 216, 0.12);
+  box-shadow: 0 0 0 1px rgba(182, 229, 29, 0.2);
 }
 
 /* ── LEFT PANEL ── */
@@ -375,28 +375,86 @@ body.panel-resizing {
 }
 .panel-section {
   padding: 16px;
-  border-bottom: 1px solid var(--border);
+  margin: 8px 8px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 .panel-section:last-child {
-  border-bottom: none;
+  margin-bottom: 8px;
   flex: 1;
 }
 .panel-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+.panel-label-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
-.panel-label::after {
-  content: "";
-  flex: 1;
+.panel-label-text {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text2);
+  flex: 0 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+}
+.section-help-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.section-help-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(47, 143, 67, 0.06);
+}
+.section-help-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(47, 143, 67, 0.08);
+}
+.panel-label-rule {
+  flex: 1 1 20px;
+  min-width: 20px;
   height: 1px;
-  background: var(--border);
+  background: linear-gradient(90deg, var(--border), transparent);
+  opacity: 0.9;
+}
+.section-help-popover {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  padding: 10px 12px;
+  box-shadow:
+    0 4px 6px rgba(15, 23, 42, 0.06),
+    0 12px 28px rgba(15, 23, 42, 0.12);
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 .field {
   display: flex;
@@ -441,18 +499,42 @@ body.panel-resizing {
 .tag-input-wrap {
   display: flex;
   gap: 5px;
+  align-items: stretch;
 }
 .tag-input-wrap input {
   flex: 1;
+  min-height: 32px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-family: "Outfit", sans-serif;
+  font-size: 12px;
+  padding: 7px 10px;
+  line-height: 1.2;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.tag-input-wrap input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(232, 255, 58, 0.1);
+}
+.tag-input-wrap input::placeholder {
+  color: var(--text3);
 }
 .tag-input-wrap button {
   background: var(--surface3);
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text2);
-  padding: 0 10px;
+  flex: 0 0 32px;
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
   transition: all 0.18s;
 }
 .tag-input-wrap button:hover {
@@ -557,7 +639,7 @@ input[type="range"] {
 .upload-zone:hover,
 .upload-zone.drag-over {
   border-color: var(--accent);
-  background: rgba(29, 78, 216, 0.04);
+  background: rgba(182, 229, 29, 0.1);
 }
 .upload-zone p {
   font-size: 11px;
@@ -679,7 +761,7 @@ input[type="range"] {
   color: #fff;
 }
 .toolbar-btn.primary:hover {
-  background: #1e40af;
+  background: #277738;
 }
 .toolbar-btn.compact {
   padding: 5px 9px;
@@ -840,11 +922,15 @@ input[type="range"] {
   border-radius: 2px;
 }
 .right-section {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  margin: 8px 8px 0;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
 .right-section:last-child {
-  border-bottom: none;
+  margin-bottom: 8px;
 }
 
 /* ── REWRITE CONTROLS ── */
@@ -903,9 +989,9 @@ input[type="range"] {
   color: var(--text2);
 }
 .preset-btn.active {
-  background: rgba(234, 88, 12, 0.1);
-  border-color: var(--accent2);
-  color: var(--accent2);
+  background: rgba(47, 143, 67, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── HEADLINE OPTIONS ── */
@@ -965,8 +1051,8 @@ input[type="range"] {
   color: var(--text2);
 }
 .ctrl-chip.active {
-  background: var(--accent3);
-  border-color: var(--accent3);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1001,8 +1087,8 @@ input[type="range"] {
   color: var(--text2);
 }
 .export-btn.download:hover {
-  border-color: var(--accent3);
-  color: var(--accent3);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .export-btn.publish {
   background: var(--accent);
@@ -1010,7 +1096,7 @@ input[type="range"] {
   color: #fff;
 }
 .export-btn.publish:hover {
-  background: #1e40af;
+  background: #277738;
 }
 
 /* ── LOADING OVERLAY ── */
@@ -1110,14 +1196,14 @@ input[type="range"] {
   color: var(--text2);
 }
 .chip.active {
-  background: rgba(8, 145, 178, 0.08);
-  border-color: var(--accent3);
-  color: var(--accent3);
+  background: rgba(47, 143, 67, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .chip.tone.active {
-  background: rgba(234, 88, 12, 0.08);
-  border-color: var(--accent2);
-  color: var(--accent2);
+  background: rgba(47, 143, 67, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── NOTICE / ERROR ── */
@@ -1173,7 +1259,7 @@ input[type="range"] {
   background: var(--accent);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(29, 78, 216, 0.3);
+  box-shadow: 0 1px 4px rgba(132, 199, 27, 0.35);
 }
 
 /* ── TABLET: narrower rails & scrollable mode tabs ── */
@@ -1226,7 +1312,7 @@ input[type="range"] {
 }
 
 /* Navbar: horizontal mode tabs collide with session pills in mid widths — use dropdown sooner */
-@media (max-width: 1100px) {
+@media (max-width: 1240px) {
   .topbar {
     gap: 8px;
   }
@@ -1235,8 +1321,10 @@ input[type="range"] {
   }
   .topbar-mode-compact {
     display: flex;
-    flex: 1 1 auto;
-    min-width: 0;
+    flex: 0 1 240px;
+    min-width: 170px;
+    max-width: 260px;
+    margin: 0 4px;
   }
   /* Mode is shown in the select; hide duplicate pill until mobile compact layout */
   #modePill {
@@ -1260,6 +1348,9 @@ input[type="range"] {
   }
   .topbar-mode-compact {
     display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
   }
   .topbar-actions {
     gap: 6px;

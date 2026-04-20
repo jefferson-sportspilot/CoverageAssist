@@ -4,11 +4,13 @@ import Image from "next/image";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   AUD_LABELS,
   MODE_LABELS,
@@ -88,6 +90,93 @@ function useCompactLayout() {
       typeof window !== "undefined" &&
       window.matchMedia(COMPACT_BREAKPOINT).matches,
     () => false
+  );
+}
+
+function SectionLabel({ title, help }: { title: string; help: string }) {
+  const [open, setOpen] = useState(false);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  const updatePosition = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const w = 280;
+    let left = r.left;
+    if (left + w > window.innerWidth - 12) {
+      left = Math.max(12, window.innerWidth - w - 12);
+    }
+    setPos({ top: r.bottom + 8, left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const onWin = () => updatePosition();
+    window.addEventListener("resize", onWin);
+    window.addEventListener("scroll", onWin, true);
+    return () => {
+      window.removeEventListener("resize", onWin);
+      window.removeEventListener("scroll", onWin, true);
+    };
+  }, [open, updatePosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (popoverRef.current?.contains(t)) return;
+      if (anchorRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="panel-label" ref={anchorRef}>
+      <div className="panel-label-row">
+        <span className="panel-label-text">{title}</span>
+        <button
+          type="button"
+          className="section-help-btn"
+          aria-label={`About ${title}`}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          ?
+        </button>
+        <span className="panel-label-rule" aria-hidden />
+      </div>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            role="tooltip"
+            className="section-help-popover"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: 280,
+              zIndex: 10060,
+            }}
+          >
+            {help}
+          </div>,
+          document.body
+        )}
+    </div>
   );
 }
 
@@ -1146,7 +1235,10 @@ export function CoverageAssistApp() {
             </div>
           ) : null}
           <div className="panel-section" id="section-player-info">
-            <div className="panel-label">Player / Event Info</div>
+            <SectionLabel
+              title="Player / Event Info"
+              help="Core context for the article: who, team, event, and publication target."
+            />
             <div className="field">
               <label>Player Name</label>
               <input
@@ -1218,8 +1310,11 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="panel-section">
-            <div className="panel-label" id="notes-label">
-              {notesLabel}
+            <div id="notes-label">
+              <SectionLabel
+                title={notesLabel}
+                help="Primary source notes. Keep this factual and specific because article claims are anchored here."
+              />
             </div>
             <div className="field">
               <textarea
@@ -1261,7 +1356,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="panel-section" id="section-espn-structure">
-            <div className="panel-label">ESPN-caliber structure</div>
+            <SectionLabel
+              title="ESPN-caliber structure"
+              help="Story framing controls: narrative spine, anchors, stats, and voice settings for longform quality."
+            />
             <div
               style={{
                 fontSize: 10,
@@ -1435,7 +1533,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="panel-section">
-            <div className="panel-label">Standout Tags</div>
+            <SectionLabel
+              title="Standout Tags"
+              help="Short traits or themes you want emphasized in summaries and article framing."
+            />
             <div className="tag-input-wrap">
               <input
                 ref={tagInputRef}
@@ -1466,7 +1567,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="panel-section" id="section-sliders">
-            <div className="panel-label">Evaluation Sliders</div>
+            <SectionLabel
+              title="Evaluation Sliders"
+              help="Quick rating profile for strengths and projection. Used as supporting evidence, not standalone facts."
+            />
             <div className="slider-group" id="sliderGroup">
               {sliderKeys.map((key) => {
                 const val = sliders[key] ?? 7;
@@ -1777,7 +1881,10 @@ export function CoverageAssistApp() {
             </div>
           ) : null}
           <div className="right-section">
-            <div className="panel-label">Style Preset</div>
+            <SectionLabel
+              title="Style Preset"
+              help="Select the overall writing style and voice shape for generated output."
+            />
             <div className="preset-grid" id="presetGrid">
               {STYLE_PRESETS.map((p) => (
                 <button
@@ -1793,7 +1900,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Intent Preset</div>
+            <SectionLabel
+              title="Intent Preset"
+              help="Sets strategic article intent and enforces key required inputs for that intent."
+            />
             <div className="chip-row" style={{ flexWrap: "wrap", marginBottom: 10 }}>
               {INTENT_PRESET_OPTIONS.map(([id, label]) => (
                 <button
@@ -1806,7 +1916,10 @@ export function CoverageAssistApp() {
                 </button>
               ))}
             </div>
-            <div className="panel-label">Primary Angle</div>
+            <SectionLabel
+              title="Primary Angle"
+              help="Defines the main storyline lens the article should prioritize."
+            />
             <div className="chip-row" id="angleChips">
               {(
                 [
@@ -1832,7 +1945,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Tone</div>
+            <SectionLabel
+              title="Tone"
+              help="Controls delivery style (analytical, narrative, energetic, etc.)."
+            />
             <div className="chip-row" id="toneChips">
               {(
                 [
@@ -1858,7 +1974,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Audience</div>
+            <SectionLabel
+              title="Audience"
+              help="Tailors language and emphasis for media, coaches, parents, recruiters, or social readers."
+            />
             <div className="chip-row" id="audienceChips">
               {(
                 [
@@ -1884,7 +2003,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Confidence Level</div>
+            <SectionLabel
+              title="Confidence Level"
+              help="Adjusts certainty level in wording. Use lower confidence when data is limited."
+            />
             <div className="chip-row">
               {(
                 [
@@ -1908,7 +2030,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Quick output</div>
+            <SectionLabel
+              title="Quick output"
+              help="Choose final format: full article, recap, preview bullets, or social pack."
+            />
             <div
               style={{
                 fontSize: 9,
@@ -1937,7 +2062,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Target Word Count</div>
+            <SectionLabel
+              title="Target Word Count"
+              help="Set approximate output length for the selected format."
+            />
             <div
               style={{
                 display: "flex",
@@ -1980,7 +2108,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section" id="historyTemplatesSection">
-            <div className="panel-label">History & templates</div>
+            <SectionLabel
+              title="History & templates"
+              help="Reuse saved examples and load prior configurations quickly."
+            />
             <div
               style={{
                 fontSize: 9,
@@ -2072,7 +2203,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Style Sample Upload</div>
+            <SectionLabel
+              title="Style Sample Upload"
+              help="Paste or import writing samples to mimic editorial voice."
+            />
             <div
               className={`upload-zone ${uploadActive ? "upload-active" : ""} ${uploadDragOver ? "drag-over" : ""}`}
               id="uploadZone"
@@ -2151,19 +2285,6 @@ export function CoverageAssistApp() {
                 <label>Serper — Web Research (optional)</label>
                 <div
                   style={{
-                    fontSize: 10,
-                    color: "var(--text3)",
-                    marginBottom: 6,
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Snippets are sent with your generation request for richer context. Set{" "}
-                  <code style={{ fontSize: 9 }}>SERPER_API_KEY</code> in{" "}
-                  <code style={{ fontSize: 9 }}>.env.local</code>. Treat as background
-                  noise — facts in the article must still come from your evaluator notes.
-                </div>
-                <div
-                  style={{
                     display: "flex",
                     gap: 8,
                     alignItems: "stretch",
@@ -2180,7 +2301,7 @@ export function CoverageAssistApp() {
                   />
                   <button
                     type="button"
-                    className="toolbar-btn"
+                    className="toolbar-btn primary"
                     disabled={serpLoading}
                     onClick={() => void fetchSerpContext()}
                   >
@@ -2203,7 +2324,10 @@ export function CoverageAssistApp() {
             id="rewriteSection"
             style={{ display: lastArticle ? undefined : "none" }}
           >
-            <div className="panel-label">Section Rewrite</div>
+            <SectionLabel
+              title="Section Rewrite"
+              help="Request targeted changes to the current draft without rebuilding everything."
+            />
             <button
               type="button"
               className="rewrite-btn"
@@ -2246,7 +2370,10 @@ export function CoverageAssistApp() {
             id="headlineSuggestions"
             style={{ display: headlineOptions.length ? undefined : "none" }}
           >
-            <div className="panel-label">Headline Options</div>
+            <SectionLabel
+              title="Headline Options"
+              help="Generate alternate headline candidates and apply one-click swaps."
+            />
             <div id="headlineList">
               {headlineOptions.map((h, i) => (
                 <div
@@ -2270,7 +2397,10 @@ export function CoverageAssistApp() {
             id="evidenceSection"
             style={{ display: lastArticle ? undefined : "none" }}
           >
-            <div className="panel-label">Source Evidence</div>
+            <SectionLabel
+              title="Source Evidence"
+              help="Review extracted factual lines used to ground generation."
+            />
             <div id="evidenceList">
               {evidenceSentences.map((s, i) => (
                 <div key={i} className="evidence-item">
@@ -2281,7 +2411,10 @@ export function CoverageAssistApp() {
           </div>
 
           <div className="right-section">
-            <div className="panel-label">Export & Publish</div>
+            <SectionLabel
+              title="Export & Publish"
+              help="Copy, download, or prepare publication output from the current draft."
+            />
             <button
               type="button"
               className="export-btn copy"
@@ -2309,7 +2442,10 @@ export function CoverageAssistApp() {
             className="right-section"
             style={{ display: lastArticle ? undefined : "none" }}
           >
-            <div className="panel-label">Regenerate With Edits</div>
+            <SectionLabel
+              title="Regenerate With Edits"
+              help="Send revision instructions to regenerate while preserving selected context."
+            />
             <div className="field" style={{ marginBottom: 8 }}>
               <label>What do you want changed?</label>
               <textarea
@@ -2338,7 +2474,10 @@ export function CoverageAssistApp() {
             className="right-section"
             style={{ display: lastArticle ? undefined : "none" }}
           >
-            <div className="panel-label">Feedback (QA)</div>
+            <SectionLabel
+              title="Feedback (QA)"
+              help="Capture quality ratings and notes for iteration tracking."
+            />
             <div className="field" style={{ marginBottom: 8 }}>
               <label>Rating</label>
               <div className="chip-row">
