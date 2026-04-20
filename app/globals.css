@@ -1225,6 +1225,25 @@ input[type="range"] {
   }
 }
 
+/* Navbar: horizontal mode tabs collide with session pills in mid widths — use dropdown sooner */
+@media (max-width: 1100px) {
+  .topbar {
+    gap: 8px;
+  }
+  .topbar-mode-tabs {
+    display: none;
+  }
+  .topbar-mode-compact {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* Mode is shown in the select; hide duplicate pill until mobile compact layout */
+  #modePill {
+    display: none !important;
+  }
+}
+
 /* ── MOBILE: single column + slide-in drawers ── */
 @media (max-width: 899px) {
   html,
